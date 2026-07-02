@@ -8,10 +8,10 @@ def write_header(buffer: io.BytesIO, size: int, x: int, y: int, z: int, length: 
     buffer.write(b"Fluid Simulation Data\n")
     buffer.write(b"BINARY\n")
     buffer.write(b"DATASET STRUCTURED_POINTS\n")
-    buffer.write(b"DIMENSIONS {size} {size} {size}\n".format(size=size))
-    buffer.write(b"ORIGIN {x} {y} {z}\n".format(x=x, y=y, z=z))
+    buffer.write(f"DIMENSIONS {size} {size} {size}\n".encode("ascii"))
+    buffer.write(f"ORIGIN {x} {y} {z}\n".encode("ascii"))
     buffer.write(b"SPACING 1 1 1\n")
-    buffer.write(b"POINT_DATA {length}\n".format(length=length))
+    buffer.write(f"POINT_DATA {length}\n".encode("ascii"))
 
 def write_scalar_data(buffer: io.BytesIO, values: np.ndarray, name: str):
     """
@@ -51,8 +51,7 @@ def save(filename: str, df: DataFrame, size: int, x: int, y: int, z: int, scalar
     if vector_fields:
         for field_name, field_list in vector_fields.items():
             # Assuming field_list contains the column names for the vector components
-            vector_values = np.column_stack([df.select(f).to_numpy().flatten() for f in field_list])
-            write_vector_data(buffer, vector_values, field_name)
+            write_vector_data(buffer, df.select(field_list).to_numpy(), field_name)
 
     with open(filename, "wb") as f:
         f.write(buffer.getvalue())

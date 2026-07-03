@@ -16,7 +16,7 @@ if [ -z $SINGULARITY_DOCKER_PASSWORD ]; then
     exit 2
 fi
 
-module singularity-ce
+module load singularity-ce
 
 singularity build fluid_analysis_util.sif docker://ghcr.io./$SINGULARITY_DOCKER_USERNAME/fluid_analysis_util:latest
 singularity run fluid_analysis_util.sif

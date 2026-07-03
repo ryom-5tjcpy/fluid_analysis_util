@@ -6,12 +6,12 @@
 #PJM -L jobenv=singularity
 #PJM -j
 
-if [-z $SINGULARITY_DOCKER_USERNAME]; then
+if [ -z $SINGULARITY_DOCKER_USERNAME ]; then
     echo "UNDEFINED SINGULARITY_DOCKER_USERNAME"
     exit 1
 fi
 
-if [-z $SINGULARITY_DOCKER_PASSWORD]; then
+if [ -z $SINGULARITY_DOCKER_PASSWORD ]; then
     echo "UNDEFINED SINGULARITY_DOCKERPASSWORD"
     exit 2
 fi

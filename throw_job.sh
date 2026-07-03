@@ -1,4 +1,4 @@
-#!bin/sh
+#!/bin/sh
 
 #PJM -L rscgrp=a-batch
 #PJM -L node=1

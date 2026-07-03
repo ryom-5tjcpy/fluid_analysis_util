@@ -1,6 +1,6 @@
 #!bin/sh
 
-#PJM -L rscgrop=a-batch
+#PJM -L rscgrp=a-batch
 #PJM -L node=1
 #PJM -L elapse=0:15:00
 #PJM -L jobenv=singularity

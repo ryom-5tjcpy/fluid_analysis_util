@@ -14,7 +14,7 @@ class SimulationDataLoader:
         """
         self.files = glob.glob(pattern)
 
-    def query(self, columns=None, conditions=None, sort_order=None, descending=False, limit=None):
+    def query(self, columns=None, conditions=None, sort_order=None, descending=False, limit=None) -> pl.DataFrame:
         """
         Query the simulation data with specified options.
 
@@ -46,7 +46,7 @@ class SimulationDataLoader:
 
         return df.collect()
     
-    def fetch_boxcell(self, x, y, z, size, columns=None, sort_order=None, descending=False, limit=None):
+    def fetch_boxcell(self, x, y, z, size, columns=None, sort_order=None, descending=False, limit=None) -> pl.DataFrame:
         """
         Fetch a boxcell of simulation data based on its position and size.
 

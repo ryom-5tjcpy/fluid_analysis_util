@@ -12,7 +12,14 @@ class SimulationDataLoader:
         Parameters:
             pattern (str): Glob pattern matching one or more Arrow IPC files.
         """
+        self.pattern = pattern
         self.files = glob.glob(pattern)
+
+        if not self.files:
+            raise FileNotFoundError(
+                f"No IPC files found for pattern: {pattern}. "
+                "Please verify the dataset key and base path."
+            )
 
     def query(self, columns=None, conditions=None, sort_order=None, descending=False, limit=None) -> pl.DataFrame:
         """

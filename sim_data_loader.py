@@ -46,22 +46,22 @@ class SimulationDataLoader:
 
         return df.collect()
     
-    def fetch_cube(self, x, y, z, size, columns=None, sort_order=None, descending=False, limit=None):
+    def fetch_boxcell(self, x, y, z, size, columns=None, sort_order=None, descending=False, limit=None):
         """
-        Fetch a cube of simulation data based on its position and size.
+        Fetch a boxcell of simulation data based on its position and size.
 
         Parameters:
-            x (int): X-coordinate of the cube's origin.
-            y (int): Y-coordinate of the cube's origin.
-            z (int): Z-coordinate of the cube's origin.
-            size (int): Size of the cube in each dimension.
+            x (int): X-coordinate of the boxcell's origin.
+            y (int): Y-coordinate of the boxcell's origin.
+            z (int): Z-coordinate of the boxcell's origin.
+            size (int): Size of the boxcell in each dimension.
             columns (list[str] | None): List of column names to select.
             sort_order (str | list[str] | None): Column name(s) to sort by.
             descending (bool): Whether to sort in descending order.
             limit (int | None): Maximum number of rows to return.
 
         Returns:
-            pl.DataFrame: The fetched cube of simulation data.
+            pl.DataFrame: The fetched boxcell of simulation data.
         """
         conditions = [
             (pl.col("x") >= x) & (pl.col("x") < x + size),

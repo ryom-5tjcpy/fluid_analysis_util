@@ -38,9 +38,17 @@ def main():
     print(f"Size: {args.size}")
     print(f"Columns to fetch: {args.columns}")
 
-    if args.velocity and ['u', 'v', 'w'] not in args.columns:
-        print("Error: Velocity fields requested but not specified in columns.")
-        exit(1)
+    if args.velocity:
+        required_velocity_columns = {"u", "v", "w"}
+        provided_columns = set(args.columns)
+        missing_columns = required_velocity_columns - provided_columns
+
+        if missing_columns:
+            print(
+                "Error: --velocity requires the following columns: u, v, w. "
+                f"Missing: {', '.join(sorted(missing_columns))}."
+            )
+            exit(1)
     
     if not str.endswith(args.output, ".vtk"):
         print("Error: Output file must have a .vtk extension.")

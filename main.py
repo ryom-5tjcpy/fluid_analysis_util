@@ -41,6 +41,10 @@ def main():
     if args.velocity and ['u', 'v', 'w'] not in args.columns:
         print("Error: Velocity fields requested but not specified in columns.")
         exit(1)
+    
+    if not str.endswith(args.output, ".vtk"):
+        print("Error: Output file must have a .vtk extension.")
+        exit(1)
 
     loader = init_loader(args.dataset)
 

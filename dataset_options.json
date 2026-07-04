@@ -1,0 +1,17 @@
+{
+    "keta1_4096": {
+        "data_type": "keta1",
+        "data_size": 4096,
+        "step": 18400
+    },
+    "keta2_4096": {
+        "data_type": "keta1",
+        "data_size": 4096,
+        "step": 12800
+    },
+    "keta2_8192": {
+        "data_type": "keta1",
+        "data_size": 4096,
+        "step": 12800
+    }
+}

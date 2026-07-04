@@ -31,4 +31,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 # アプリケーションコードのコピー
 COPY . /app
 
-CMD ["python", "main.py"]
+ENTRYPOINT ["python", "main.py"]

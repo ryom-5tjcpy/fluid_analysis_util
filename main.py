@@ -12,7 +12,7 @@ def init_loader(dataset_key: str) -> SimulationDataLoader:
     dataset = options[dataset_key]
     base_path = f"/fast/jh240062/arrow_files/{dataset['data_type']}_{dataset['data_size']}_{dataset['step']}"
     
-    data_pattern = f"{base_path}/{dataset['data_type']}_{dataset['data_size']}_*.arrow"
+    data_pattern = f"{base_path}/data/{dataset['data_type']}_{dataset['data_size']}_*.arrow"
     
     return SimulationDataLoader(data_pattern)
 

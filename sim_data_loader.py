@@ -36,6 +36,8 @@ class SimulationDataLoader:
                     self.file_index = json.load(f)
 
                 need_reindex = len(self.file_index) != len(self.files)
+            else:
+                need_reindex = True
         except Exception as e:
             print(f"Error occurred while loading index: {e}")
             need_reindex = True
@@ -53,8 +55,6 @@ class SimulationDataLoader:
                     col('gnx').max().alias('max_gnx'),
                     col('gny').min().alias('min_gny'),
                     col('gny').max().alias('max_gny'),
-                    col('nn').min().alias('min_nn'),
-                    col('nn').max().alias('max_nn'),
                     pl.len().alias('row_count')
                 ]).collect()
 
@@ -64,7 +64,6 @@ class SimulationDataLoader:
                     'file': file_path,
                     'gnx_range': (row['min_gnx'], row['max_gnx']),
                     'gny_range': (row['min_gny'], row['max_gny']),
-                    'nn_range': (row['min_nn'], row['max_nn']),
                     'row_count': row['row_count']
                 }
             except Exception as e:
@@ -86,14 +85,13 @@ class SimulationDataLoader:
         except Exception as e:
             print(f"Error occurred while saving index: {e}")
 
-    def find_files(self, gnx_range, gny_range, nn_range):
+    def find_files(self, gnx_range, gny_range):
         """
         Find files that intersect with the given ranges.
 
         Parameters:
             gnx_range (tuple[int, int]): Range for gnx column.
             gny_range (tuple[int, int]): Range for gny column.
-            nn_range (tuple[int, int]): Range for nn column.
 
         Returns:
             list[str]: List of file paths that intersect with the given ranges.
@@ -102,11 +100,9 @@ class SimulationDataLoader:
         for file_info in self.file_index:
             gnx_min, gnx_max = file_info['gnx_range']
             gny_min, gny_max = file_info['gny_range']
-            nn_min, nn_max = file_info['nn_range']
 
             if (gnx_min < gnx_range[1] and gnx_max > gnx_range[0] and
-                gny_min < gny_range[1] and gny_max > gny_range[0] and
-                nn_min < nn_range[1] and nn_max > nn_range[0]):
+                gny_min < gny_range[1] and gny_max > gny_range[0]):
                 target_files.append(file_info['file'])
 
         return target_files
@@ -164,7 +160,6 @@ class SimulationDataLoader:
         target_files = self.find_files(
             gnx_range=(x, x + size),
             gny_range=(y, y + size),
-            nn_range=(z, z + size)
         )
 
         conditions = [

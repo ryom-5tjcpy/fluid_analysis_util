@@ -86,11 +86,37 @@ class SimulationDataLoader:
         except Exception as e:
             print(f"Error occurred while saving index: {e}")
 
-    def query(self, columns=None, conditions=None, sort_order=None, descending=False, limit=None) -> pl.DataFrame:
+    def find_files(self, gnx_range, gny_range, nn_range):
+        """
+        Find files that intersect with the given ranges.
+
+        Parameters:
+            gnx_range (tuple[int, int]): Range for gnx column.
+            gny_range (tuple[int, int]): Range for gny column.
+            nn_range (tuple[int, int]): Range for nn column.
+
+        Returns:
+            list[str]: List of file paths that intersect with the given ranges.
+        """
+        target_files = []
+        for file_info in self.file_index:
+            gnx_min, gnx_max = file_info['gnx_range']
+            gny_min, gny_max = file_info['gny_range']
+            nn_min, nn_max = file_info['nn_range']
+
+            if (gnx_min < gnx_range[1] and gnx_max > gnx_range[0] and
+                gny_min < gny_range[1] and gny_max > gny_range[0] and
+                nn_min < nn_range[1] and nn_max > nn_range[0]):
+                target_files.append(file_info['file'])
+
+        return target_files
+
+    def query(self, target_files=None, columns=None, conditions=None, sort_order=None, descending=False, limit=None) -> pl.DataFrame:
         """
         Query the simulation data with specified options.
 
         Parameters:
+            target_files (list[str] | None): List of file paths to query.
             columns (list[str] | None): List of column names to select.
             conditions (list[pl.Expr] | None): List of Polars boolean expressions for filtering.
             sort_order (str | list[str] | None): Column name(s) to sort by.
@@ -100,7 +126,7 @@ class SimulationDataLoader:
         Returns:
             pl.DataFrame: Collected result of the query.
         """
-        target_files = self.files
+        target_files = target_files or self.files
 
         df = pl.scan_ipc(target_files)
 
@@ -135,9 +161,15 @@ class SimulationDataLoader:
         Returns:
             pl.DataFrame: The fetched boxcell of simulation data.
         """
+        target_files = self.find_files(
+            gnx_range=(x, x + size),
+            gny_range=(y, y + size),
+            nn_range=(z, z + size)
+        )
+
         conditions = [
             (col("gnx") >= x) & (col("gnx") < x + size),
             (col("gny") >= y) & (col("gny") < y + size),
             (col("nn") >= z) & (col("nn") < z + size)
         ]
-        return self.query(columns=columns, conditions=conditions, sort_order=sort_order, descending=descending, limit=limit)
+        return self.query(target_files, columns, conditions, sort_order, descending, limit)

@@ -71,8 +71,8 @@ class SimulationDataLoader:
             pl.DataFrame: The fetched boxcell of simulation data.
         """
         conditions = [
-            (pl.col("x") >= x) & (pl.col("x") < x + size),
-            (pl.col("y") >= y) & (pl.col("y") < y + size),
-            (pl.col("z") >= z) & (pl.col("z") < z + size)
+            (pl.col("gnx") >= x) & (pl.col("gnx") < x + size),
+            (pl.col("gny") >= y) & (pl.col("gny") < y + size),
+            (pl.col("nn") >= z) & (pl.col("nn") < z + size)
         ]
         return self.query(columns=columns, conditions=conditions, sort_order=sort_order, descending=descending, limit=limit)

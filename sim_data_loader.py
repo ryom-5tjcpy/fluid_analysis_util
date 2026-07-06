@@ -20,7 +20,7 @@ class SimulationDataLoader:
         """
         self.pattern = pattern
         self.index_file = index_file
-        self.files = glob.glob(pattern)
+        self.files = sorted(glob.glob(pattern))
 
         if not self.files:
             raise FileNotFoundError(
@@ -43,7 +43,7 @@ class SimulationDataLoader:
             need_reindex = True
 
         if need_reindex:
-            self.create_index(50)
+            self.create_index(100)
 
     def create_index(self, max_workers: int = 4):
         def process_single_file(file_path):

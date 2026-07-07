@@ -1,0 +1,21 @@
+Bootstrap: docker
+From: python:3.12.3-slim
+
+%files
+    . /app
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends ca-certificates curl
+    python -m pip install --no-cache-dir uv
+
+    cd /app
+    uv sync --frozen --no-install-project --no-dev
+    uv sync --frozen --no-dev
+
+%environment
+    export PATH="/app/.venv/bin:$PATH"
+
+%runscript
+    exec python /app/main.py "$@"

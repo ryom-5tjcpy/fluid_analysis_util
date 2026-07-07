@@ -8,5 +8,5 @@
 
 module load singularity-ce
 
-singularity build fluid_analysis_util.sif Singularity.def
+singularity build --fakeroot fluid_analysis_util.sif Singularity.def
 singularity run -B /fast/jh240062:/data fluid_analysis_util.sif

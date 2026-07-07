@@ -9,4 +9,4 @@
 module load singularity-ce
 
 singularity build fluid_analysis_util.sif Singularity.def
-singularity run fluid_analysis_util.sif
+singularity run -B /fast/jh240062:/data fluid_analysis_util.sif

@@ -13,8 +13,10 @@ def init_loader(dataset_key: str) -> SimulationDataLoader:
     base_path = f"/data/arrow_files/{dataset['data_type']}_{dataset['data_size']}_{dataset['step']}"
     
     data_pattern = f"{base_path}/data/{dataset['data_type']}_{dataset['data_size']}_*.arrow"
+
+    inde_file = f"{dataset['data_type']}_{dataset['data_size']}_index.json"
     
-    return SimulationDataLoader(data_pattern)
+    return SimulationDataLoader(data_pattern, inde_file)
 
 def main():
     parser = argparse.ArgumentParser(

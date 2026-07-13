@@ -45,28 +45,6 @@ class SimulationDataLoader:
         if need_reindex:
             self.create_index(100)
 
-        self.gnx_range = ()
-        for file_info in self.file_index:
-            gnx_min, gnx_max = file_info['gnx_range']
-            if not self.gnx_range:
-                self.gnx_range = (gnx_min, gnx_max)
-            else:
-                if gnx_min < self.gnx_range[0]:
-                    self.gnx_range = (gnx_min, self.gnx_range[1])
-                if gnx_max > self.gnx_range[1]:
-                    self.gnx_range = (self.gnx_range[0], gnx_max)
-
-        self.gny_range = ()
-        for file_info in self.file_index:
-            gny_min, gny_max = file_info['gny_range']
-            if not self.gny_range:
-                self.gny_range = (gny_min, gny_max)
-            else:
-                if gny_min < self.gny_range[0]:
-                    self.gny_range = (gny_min, self.gny_range[1])
-                if gny_max > self.gny_range[1]:
-                    self.gny_range = (self.gny_range[0], gny_max)
-
     def create_index(self, max_workers: int = 4):
         def process_single_file(file_path):
             try:

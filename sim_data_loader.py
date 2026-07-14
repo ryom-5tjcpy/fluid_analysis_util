@@ -126,11 +126,11 @@ class SimulationDataLoader:
 
         df = pl.scan_ipc(target_files)
 
-        if columns:
-            df = df.select(columns)
-
         if conditions:
             df = df.filter(pl.all_horizontal(conditions))
+            
+        if columns:
+            df = df.select(columns)
 
         if sort_order:
             df = df.sort(sort_order, descending=descending)

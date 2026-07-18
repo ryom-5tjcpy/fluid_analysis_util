@@ -17,5 +17,8 @@ From: python:3.12.3-slim
 %environment
     export PATH="/app/.venv/bin:$PATH"
 
-%runscript
+%app fetch_data
     exec python /app/main.py "$@"
+
+%app coarsen_grid
+    exec python /app/coarsen_grid.py

@@ -54,3 +54,6 @@ def main():
     df = pl.LazyFrame(data, schema=["i", "j", "k", "eps"])
 
     df.collect().write_csv("coarsened_grid.csv")
+
+if __name__ == "__main__":
+    main()

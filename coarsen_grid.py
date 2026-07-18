@@ -5,7 +5,7 @@ import polars as pl
 from sim_data_loader import SimulationDataLoader
 
 def init_loader(dataset: str) -> SimulationDataLoader:
-    base_path = f"data/arrow_files/{dataset['data_type']}_{dataset['data_size']}_{dataset['data_step']}"
+    base_path = f"data/arrow_files/{dataset['data_type']}_{dataset['data_size']}_{dataset['step']}"
 
     data_pattern = f"{base_path}/data/{dataset['data_type']}_{dataset['data_size']}_*.arrow"
     

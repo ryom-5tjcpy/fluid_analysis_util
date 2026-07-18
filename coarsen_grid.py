@@ -27,25 +27,28 @@ def main():
 
     coarsen_size = 64
 
-    I = np.tile(np.linspace(1, coarsen_size, coarsen_size), (size // coarsen_size) ** 2)
-    J = np.repeat(np.tile(np.linspace(1, coarsen_size, coarsen_size), size // coarsen_size), size // coarsen_size)
-    K = np.repeat(np.linspace(1, coarsen_size, coarsen_size), (size // coarsen_size) ** 2)
+    num_blocks = size // coarsen_size
 
-    columns = ['gnx', 'gny', 'nn', 'u', 'v', 'w', 'eps']
+    block_coords = np.linspace(1, size, num_blocks)
+
+    I, J, K = np.meshgrid(block_coords, block_coords, block_coords, indexing='ij')
+    I = np.reshape(I, (-1,))
+    J = np.reshape(J, (-1,))
+    K = np.reshape(K, (-1,))
 
     eps = np.zeros_like(I, dtype=float)
+    columns = ["gnx", "gny", "nn", "u", "v", "w", "eps"]
 
-    for i in I:
+    for idx, (i, j, k) in enumerate(zip(I, J, K)):
         gnx = (i - 1) * coarsen_size + 1
-        for j in J:
-            gny = (j - 1) * coarsen_size + 1
-            for k in K:
-                nn = (k - 1) * coarsen_size + 1
+        gny = (j - 1) * coarsen_size + 1
+        nn = (k - 1) * coarsen_size + 1
 
-                df_fetched = loader.fetch_boxcell(gnx, gny, nn, coarsen_size, columns)
+        df_fetched = loader.fetch_boxcell(gnx, gny, nn, coarsen_size, columns)
 
-                df_eps = df_fetched.select("eps")
-                eps[k * coarsen_size + j * coarsen_size + i] = df_eps.mean().item()
+        df_eps = df_fetched.select("eps")
+        eps[idx] = df_eps.mean().item()
+
     data = np.vstack([I, J, K, eps]).T
 
     df = pl.LazyFrame(data, schema=["i", "j", "k", "eps"])

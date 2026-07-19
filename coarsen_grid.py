@@ -1,4 +1,3 @@
-from concurrent.futures import ThreadPoolExecutor
 import json
 import numpy as np
 import polars as pl
@@ -37,22 +36,18 @@ def main():
     J = np.reshape(J, (-1,))
     K = np.reshape(K, (-1,))
 
+    eps = np.zeros_like(I, dtype=float)
     columns = ["gnx", "gny", "nn", "u", "v", "w", "eps"]
 
-    def process_block(coords):
-        i, j, k = coords
+    for idx, (i, j, k) in enumerate(zip(I, J, K)):
         gnx = (i - 1) * coarsen_size + 1
         gny = (j - 1) * coarsen_size + 1
         nn = (k - 1) * coarsen_size + 1
 
         df_fetched = loader.fetch_boxcell(gnx, gny, nn, coarsen_size, columns)
-        df_eps = df_fetched.select("eps")
-        return df_eps.mean().item()
-    
-    coords_list = list(zip(I, J, K))
 
-    with ThreadPoolExecutor(max_workers=100) as executor:
-        eps = list(executor.map(process_block, coords_list))
+        df_eps = df_fetched.select("eps")
+        eps[idx] = df_eps.mean().item()
 
     data = np.vstack([I, J, K, eps]).T
 

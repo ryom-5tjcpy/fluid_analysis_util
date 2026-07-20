@@ -35,25 +35,7 @@ class SimulationDataLoader:
                 "Please verify the dataset key and base path."
             )
         
-        index_path = Path(index_file)
-
-        try:
-            if index_path.exists():
-                with open(index_path, 'r') as f:
-                    self.file_index = json.load(f)
-
-                need_reindex = len(self.file_index) != len(self.files)
-            else:
-                need_reindex = True
-        except Exception as e:
-            print(f"Error occurred while loading index: {e}")
-            need_reindex = True
-
-        if need_reindex:
-            self.create_index(100)
-        
-        # Build spatial grid index for fast range queries
-        self._build_spatial_index()
+        self.data = pl.scan_ipc(self.files)
     
     def _build_spatial_index(self):
         """Build a grid-based spatial index for fast file lookups."""
@@ -188,7 +170,7 @@ class SimulationDataLoader:
         """
         target_files = target_files or self.files
 
-        df = pl.scan_ipc(target_files)
+        df = self.data
 
         if conditions:
             df = df.filter(pl.all_horizontal(conditions))
@@ -222,14 +204,10 @@ class SimulationDataLoader:
         Returns:
             pl.DataFrame: The fetched boxcell of simulation data.
         """
-        target_files = self.find_files(
-            gnx_range=(x, x + size),
-            gny_range=(y, y + size),
-        )
 
         conditions = [
             (col("gnx") >= x) & (col("gnx") < x + size),
             (col("gny") >= y) & (col("gny") < y + size),
             (col("nn") >= z) & (col("nn") < z + size)
         ]
-        return self.query(target_files, columns, conditions, sort_order, descending, limit, streaming=streaming)
+        return self.query(target_files=None, columns=columns, conditions=conditions, sort_order=sort_order, descending=descending, limit=limit, streaming=streaming)

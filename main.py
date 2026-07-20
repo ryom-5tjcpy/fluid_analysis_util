@@ -58,7 +58,7 @@ def main():
 
     loader = init_loader(args.dataset)
 
-    boxcell = loader.fetch_boxcell(args.x, args.y, args.z, args.size, args.columns, sort_order=['nn', 'gny', 'gnx'])
+    boxcell = loader.fetch_boxcell(args.x, args.y, args.z, args.size, args.columns, sort_order=['nn', 'gny', 'gnx'], streaming=True)
 
     if args.velocity:
         scalar_fields = [x for x in args.columns if x not in ['u', 'v', 'w']]

@@ -146,11 +146,11 @@ class SimulationDataLoader:
             list[str]: List of file paths that intersect with the given ranges.
         """
         # Compute grid cells that overlap with query range
-        grid_x_min = gnx_range[0] // self.GRID_CELL_SIZE
-        grid_x_max = (gnx_range[1] - 1) // self.GRID_CELL_SIZE
-        grid_y_min = gny_range[0] // self.GRID_CELL_SIZE
-        grid_y_max = (gny_range[1] - 1) // self.GRID_CELL_SIZE
-        
+        grid_x_min = int(gnx_range[0] // self.GRID_CELL_SIZE)
+        grid_x_max = int((gnx_range[1] - 1) // self.GRID_CELL_SIZE)
+        grid_y_min = int(gny_range[0] // self.GRID_CELL_SIZE)
+        grid_y_max = int((gny_range[1] - 1) // self.GRID_CELL_SIZE)
+
         # Collect candidate file indices from grid cells
         candidate_file_indices = set()
         for gx in range(grid_x_min, grid_x_max + 1):

@@ -44,7 +44,7 @@ def main():
         gny = (j - 1) * coarsen_size + 1
         nn = (k - 1) * coarsen_size + 1
 
-        df_fetched = loader.fetch_boxcell(gnx, gny, nn, coarsen_size, columns)
+        df_fetched = loader.fetch_boxcell(gnx, gny, nn, coarsen_size, columns, streaming=True)
 
         df_eps = df_fetched.select("eps")
         eps[idx] = df_eps.mean().item()

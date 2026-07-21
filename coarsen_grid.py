@@ -25,7 +25,8 @@ def main():
     expr_k = ((col("nn") - 1) // coarsen_size + 1).alias("k")
 
     df = df.with_columns([expr_i, expr_j, expr_k])
-    df = df.collect().write_csv("coarsened_data.csv")
+    df = df.group_by(["i", "j", "k"]).agg(col("eps").mean()).sort(["i", "j", "k"])
+    df.collect().write_csv("coarsened_data.csv")
 
 if __name__ == "__main__":
     main()

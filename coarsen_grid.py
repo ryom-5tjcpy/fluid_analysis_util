@@ -21,15 +21,15 @@ def main():
     import time
     start = time.perf_counter()
 
-    df = pl.scan_ipc(files)
+    lf = pl.scan_ipc(files)
 
     expr_i = ((col("gnx") - 1) // coarsen_size + 1).alias("i")
     expr_j = ((col("gny") - 1) // coarsen_size + 1).alias("j")
     expr_k = ((col("nn") - 1) // coarsen_size + 1).alias("k")
 
-    df = df.with_columns([expr_i, expr_j, expr_k])
-    df = df.group_by(["i", "j", "k"]).agg(col("eps").count().alias("eps_count"), col("eps").mean().alias("eps_mean"), col("eps").std().alias("eps_std"), col("eps").sum().alias("eps_sum"), col("eps").min().alias("eps_min"), col("eps").max().alias("eps_max"), col("eps").median().alias("eps_median")).sort(["i", "j", "k"])
-    df.collect(engine='streaming').write_csv("coarsened_data.csv")
+    lf = lf.with_columns([expr_i, expr_j, expr_k])
+    lf = lf.group_by(["i", "j", "k"]).agg(col("eps").mean().alias("eps_mean"), col("eps").sum().alias("eps_sum")).sort(["k", "j", "i"])
+    lf.collect(engine='streaming').write_csv("coarsened_data.csv")
 
     elapse = time.perf_counter() - start
     print(f"Elapsed time: {elapse}")

@@ -30,62 +30,29 @@ def main():
 
     lf = lf.with_columns([expr_i, expr_j, expr_k])
 
-    N = dataset['data_size'] // coarsen_size
-
-    k_grid, j_grid, i_grid = np.meshgrid(np.arange(N), np.arange(N), np.arange(N))
-
-    i_flat = np.ravel(i_grid)
-    j_flat = np.ravel(j_grid)
-    k_flat = np.ravel(k_grid)
-
     h = coarsen_size // 2
 
-    gnx = np.vstack([
-        i_flat * coarsen_size + 1,
-        i_flat * coarsen_size + h,
-        i_flat * coarsen_size + h,
-        (i_flat + 1) * coarsen_size,
-        i_flat * coarsen_size + h,
-        i_flat * coarsen_size + h
-    ])
+    local_x = (col("gnx") - 1) % coarsen_size + 1
+    local_y = (col("gny") - 1) % coarsen_size + 1
+    local_z = (col("nn")  - 1) % coarsen_size + 1
 
-    gnx = gnx.T.reshape(-1)
+    # 提示された6つのパターンを条件式として定義
+    c1 = (local_x == 1) & (local_y == h) & (local_z == h)
+    c2 = (local_x == h) & (local_y == 1) & (local_z == h)
+    c3 = (local_x == h) & (local_y == h) & (local_z == 1)
+    c4 = (local_x == coarsen_size) & (local_y == h) & (local_z == h)
+    c5 = (local_x == h) & (local_y == coarsen_size) & (local_z == h)
+    c6 = (local_x == h) & (local_y == h) & (local_z == coarsen_size)
 
-    gny = np.vstack([
-        j_flat * coarsen_size + h,
-        j_flat * coarsen_size + 1,
-        j_flat * coarsen_size + h,
-        j_flat * coarsen_size + h,
-        (j_flat + 1) * coarsen_size,
-        j_flat * coarsen_size + h
-    ])
+    # 6つのパターンのいずれかに合致する行だけをフィルター
+    lf_uvw = lf.filter(c1 | c2 | c3 | c4 | c5 | c6)
 
-    gny = gny.T.reshape(-1)
-
-    nn = np.vstack([
-        k_flat * coarsen_size + h,
-        k_flat * coarsen_size + h,
-        k_flat * coarsen_size + 1,
-        k_flat * coarsen_size + h,
-        k_flat * coarsen_size + h,
-        (k_flat + 1) * coarsen_size
-    ])
-
-    nn = nn.T.reshape(-1)
-
-    targets = pl.DataFrame({
-        "gnx": gnx,
-        "gny": gny,
-        "nn": nn
-    }, schema={"gnx": pl.Int64, "gny": pl.Int64, "nn": pl.Int64})
-
-    lf_uvw = lf.join(targets.lazy(), on=["gnx", "gny", "nn"], how="inner")
-    df_uvw = lf_uvw.collect(engine='streaming')
+    df_uvw = lf_uvw.collect()
     print(df_uvw)
     print(len(df_uvw))
 
-    lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean().alias("eps_mean"), col("eps").sum().alias("eps_sum")).sort(["k", "j", "i"])
-    lf_eps.collect(engine='streaming').write_csv("coarsened_data.csv")
+    #lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean().alias("eps_mean"), col("eps").sum().alias("eps_sum")).sort(["k", "j", "i"])
+    #lf_eps.collect(engine='streaming').write_csv("coarsened_data.csv")
 
     elapse = time.perf_counter() - start
     print(f"Elapsed time: {elapse}")

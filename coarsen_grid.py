@@ -38,8 +38,6 @@ def main():
     j_flat = np.ravel(j_grid)
     k_flat = np.ravel(k_grid)
 
-    print(i_flat)
-
     h = coarsen_size // 2
 
     gnx = np.vstack([

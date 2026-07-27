@@ -28,8 +28,8 @@ def main():
     expr_k = ((col("nn") - 1) // coarsen_size + 1).alias("k")
 
     lf = lf.with_columns([expr_i, expr_j, expr_k])
-    lf = lf.group_by(["i", "j", "k"]).agg(col("eps").mean().alias("eps_mean"), col("eps").sum().alias("eps_sum")).sort(["k", "j", "i"])
-    lf.collect(engine='streaming').write_csv("coarsened_data.csv")
+    lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean().alias("eps_mean"), col("eps").sum().alias("eps_sum")).sort(["k", "j", "i"])
+    lf_eps.collect(engine='streaming').write_csv("coarsened_data.csv")
 
     elapse = time.perf_counter() - start
     print(f"Elapsed time: {elapse}")

@@ -45,7 +45,7 @@ def main():
     c6 = (local_x == h) & (local_y == h) & (local_z == coarsen_size)
 
     # 6つのパターンのいずれかに合致する行だけをフィルター
-    lf_uvw = lf.filter(c1 | c2 | c3 | c4 | c5 | c6).sorted(["k", "j", "i", "gnx", "gny", "nn"])
+    lf_uvw = lf.filter(c1 | c2 | c3 | c4 | c5 | c6).sort(["k", "j", "i", "gnx", "gny", "nn"])
 
     df_uvw = lf_uvw.collect()
     print(df_uvw)

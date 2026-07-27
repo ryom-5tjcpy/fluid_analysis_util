@@ -79,7 +79,7 @@ def main():
         "nn": nn
     }, schema={"gnx": pl.Int64, "gny": pl.Int64, "nn": pl.Int64})
 
-    lf_uvw = lf.join(targets, on=["gnx", "gny", "nn"], how="inner")
+    lf_uvw = lf.join(targets.lazy(), on=["gnx", "gny", "nn"], how="inner")
     df_uvw = lf_uvw.collect(engine='streaming')
     print(df_uvw)
     print(len(df_uvw))

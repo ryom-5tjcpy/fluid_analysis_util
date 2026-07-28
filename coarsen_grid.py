@@ -16,13 +16,16 @@ def main():
     coarsen_size = 64
 
     base_path = f"/data/arrow_files/{dataset['data_type']}_{dataset['data_size']}_{dataset['step']}"
-    data_pattern = f"{base_path}/data/{dataset['data_type']}_{dataset['data_size']}_*.arrow"
-    files = glob.glob(data_pattern)
+    #data_pattern = f"{base_path}/data/{dataset['data_type']}_{dataset['data_size']}_*.arrow"
+    #files = glob.glob(data_pattern)
+
+    file = f"{base_path}/data/keta2_4096_00000_1_1.arrow"
 
     import time
     start = time.perf_counter()
 
-    lf = pl.scan_ipc(files)
+    #lf = pl.scan_ipc(files)
+    lf = pl.scan_ipc(file)
 
     expr_i = ((col("gnx") - 1) // coarsen_size + 1).alias("i")
     expr_j = ((col("gny") - 1) // coarsen_size + 1).alias("j")
@@ -45,7 +48,7 @@ def main():
     c6 = (local_x == h) & (local_y == h) & (local_z == coarsen_size)
 
     # 6つのパターンのいずれかに合致する行だけをフィルター
-    lf_uvw = lf.filter(c1 | c2 | c3 | c4 | c5 | c6).sort(["k", "j", "i", "gnx", "gny", "nn"])
+    lf_uvw = lf.filter(c1 | c2 | c3 | c4 | c5 | c6).sort(["k", "j", "i"])
 
     df_uvw = lf_uvw.collect()
     print(df_uvw)

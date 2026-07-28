@@ -48,11 +48,17 @@ def main():
     c6 = (local_x == h) & (local_y == h) & (local_z == coarsen_size)
 
     # 6つのパターンのいずれかに合致する行だけをフィルター
-    lf_uvw = lf.filter(c1 | c2 | c3 | c4 | c5 | c6).sort(["k", "j", "i"])
+    lf_uvw = lf.filter(c1 | c2 | c3 | c4 | c5 | c6).with_columns(
+        pl.when(local_x == 1).then(pl.lit("x_low")).when(local_x == coarsen_size).then(pl.lit("x_high"))
+        .when(local_y == 1).then(pl.lit("y_low")).when(local_y == coarsen_size).then(pl.lit("y_high"))
+        .when(local_z == 1).then(pl.lit("z_low")).when(local_z == coarsen_size).then(pl.lit("z_high"))
+        .alias("face"))
 
     df_uvw = lf_uvw.collect()
+
+    df_uvw = df_uvw.pivot(on="face", index=["i", "j", "k"], values=["u", "v", "w"])
+
     print(df_uvw)
-    print(len(df_uvw))
 
     #lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean().alias("eps_mean"), col("eps").sum().alias("eps_sum")).sort(["k", "j", "i"])
     #lf_eps.collect(engine='streaming').write_csv("coarsened_data.csv")

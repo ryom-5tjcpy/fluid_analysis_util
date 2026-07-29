@@ -77,7 +77,11 @@ def main():
     ])
 
     df_uvw = df_uvw.with_columns(
-        (col('u_x_grad') ** 2 + col('v_y_grad') ** 2 + col('w_z_grad') ** 2 + col('s_12') + col('s_23') + col('s_31')).alias('s2')
+        (col('u_x_grad') ** 2 + col('v_y_grad') ** 2 + col('w_z_grad') ** 2 + col('s_12') + col('s_23') + col('s_31')).alias('s2_row')
+    )
+
+    df_uvw = df_uvw.with_columns(
+        (col('s2_row') / col('s2_row').mean()).alias('s2')
     )
 
     print(df_uvw.head())

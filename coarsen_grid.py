@@ -71,9 +71,9 @@ def main():
     ])
 
     df_uvw = df_uvw.with_columns([
-        0.25 * ((col('u_y_grad') + col('v_x_grad')) ** 2).alias('s_12'),
-        0.25 * ((col('v_z_grad') + col('w_y_grad')) ** 2).alias('s_23'),
-        0.25 * ((col('w_x_grad') + col('u_z_grad')) ** 2).alias('s_31')
+        (0.25 * ((col('u_y_grad') + col('v_x_grad')) ** 2)).alias('s_12'),
+        (0.25 * ((col('v_z_grad') + col('w_y_grad')) ** 2)).alias('s_23'),
+        (0.25 * ((col('w_x_grad') + col('u_z_grad')) ** 2)).alias('s_31')
     ])
 
     df_uvw = df_uvw.with_columns(

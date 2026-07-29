@@ -58,7 +58,29 @@ def main():
 
     df_uvw = df_uvw.pivot(on="face", index=["i", "j", "k"], values=["u", "v", "w"])
 
-    print(df_uvw)
+    df_uvw = df_uvw.with_columns([
+        ((col('u_x_high') - col('u_x_low')) / (coarsen_size - 1)).alias('u_x_grad'),
+        ((col('u_y_high') - col('u_y_low')) / (coarsen_size - 1)).alias('u_y_grad'),
+        ((col('u_z_high') - col('u_z_low')) / (coarsen_size - 1)).alias('u_z_grad'),
+        ((col('v_x_high') - col('v_x_low')) / (coarsen_size - 1)).alias('v_x_grad'),
+        ((col('v_y_high') - col('v_y_low')) / (coarsen_size - 1)).alias('v_y_grad'),
+        ((col('v_z_high') - col('v_z_low')) / (coarsen_size - 1)).alias('v_z_grad'),
+        ((col('w_x_high') - col('w_x_low')) / (coarsen_size - 1)).alias('w_x_grad'),
+        ((col('w_y_high') - col('w_y_low')) / (coarsen_size - 1)).alias('w_y_grad'),
+        ((col('w_z_high') - col('w_z_low')) / (coarsen_size - 1)).alias('w_z_grad')
+    ])
+
+    df_uvw = df_uvw.with_columns([
+        0.25 * ((col('u_y_grad') + col('v_x_grad')) ** 2).alias('s_12'),
+        0.25 * ((col('v_z_grad') + col('w_y_grad')) ** 2).alias('s_23'),
+        0.25 * ((col('w_x_grad') + col('u_z_grad')) ** 2).alias('s_31')
+    ])
+
+    df_uvw = df_uvw.with_columns(
+        (col('u_x_grad') ** 2 + col('v_y_grad') ** 2 + col('w_z_grad') ** 2 + col('s_12') + col('s_23') + col('s_31')).alias('s2')
+    )
+
+    print(df_uvw.head())
 
     #lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean().alias("eps_mean"), col("eps").sum().alias("eps_sum")).sort(["k", "j", "i"])
     #lf_eps.collect(engine='streaming').write_csv("coarsened_data.csv")

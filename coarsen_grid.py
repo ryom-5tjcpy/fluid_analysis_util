@@ -86,8 +86,8 @@ def main():
 
     print(df_uvw.head())
 
-    #lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean().alias("eps_mean"), col("eps").sum().alias("eps_sum")).sort(["i", "j", "k"])
-    #lf_eps.collect(engine='streaming').write_csv("coarsened_data.csv")
+    lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean().alias("eps_mean"), col("eps").sum().alias("eps_sum")).sort(["i", "j", "k"])
+    lf_eps.collect(engine='streaming').write_csv("coarsened_data.csv")
 
     elapse = time.perf_counter() - start
     print(f"Elapsed time: {elapse}")

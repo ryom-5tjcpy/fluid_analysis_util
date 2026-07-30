@@ -16,16 +16,16 @@ def main():
     coarsen_size = 64
 
     base_path = f"/data/arrow_files/{dataset['data_type']}_{dataset['data_size']}_{dataset['step']}"
-    #data_pattern = f"{base_path}/data/{dataset['data_type']}_{dataset['data_size']}_*.arrow"
-    #files = glob.glob(data_pattern)
+    data_pattern = f"{base_path}/data/{dataset['data_type']}_{dataset['data_size']}_*.arrow"
+    files = glob.glob(data_pattern)
 
-    file = f"{base_path}/data/keta2_4096_00000_1_1.arrow"
+    #file = f"{base_path}/data/keta2_4096_00000_1_1.arrow"
 
     import time
     start = time.perf_counter()
 
-    #lf = pl.scan_ipc(files)
-    lf = pl.scan_ipc(file)
+    lf = pl.scan_ipc(files)
+    #lf = pl.scan_ipc(file)
 
     expr_i = ((col("gnx") - 1) // coarsen_size + 1).alias("i")
     expr_j = ((col("gny") - 1) // coarsen_size + 1).alias("j")
@@ -86,7 +86,7 @@ def main():
 
     print(df_uvw.head())
 
-    lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean().alias("eps_mean"), col("eps").sum().alias("eps_sum")).sort(["i", "j", "k"])
+    lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean()).sort(["i", "j", "k"])
     lf_eps.collect(engine='streaming').write_csv("coarsened_data.csv")
 
     elapse = time.perf_counter() - start

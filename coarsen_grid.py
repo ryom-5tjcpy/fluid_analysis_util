@@ -57,8 +57,20 @@ def main():
     lf_uvw = lf_uvw.group_by(['i', 'j', 'k']).agg([
         col('u').filter(col('face') == "x_low").first().alias('u_x_low'),
         col('u').filter(col('face') == "x_high").first().alias('u_x_high'),
+        col('u').filter(col('face') == "y_low").first().alias('u_y_low'),
+        col('u').filter(col('face') == "y_high").first().alias('u_y_high'),
+        col('u').filter(col('face') == "z_low").first().alias('u_z_low'),
+        col('u').filter(col('face') == "z_high").first().alias('u_z_high'),
+        col('v').filter(col('face') == "x_low").first().alias('v_x_low'),
+        col('v').filter(col('face') == "x_high").first().alias('v_x_high'),
         col('v').filter(col('face') == "y_low").first().alias('v_y_low'),
         col('v').filter(col('face') == "y_high").first().alias('v_y_high'),
+        col('v').filter(col('face') == "z_low").first().alias('v_z_low'),
+        col('v').filter(col('face') == "z_high").first().alias('v_z_high'),
+        col('w').filter(col('face') == "x_low").first().alias('w_x_low'),
+        col('w').filter(col('face') == "x_high").first().alias('w_x_high'),
+        col('w').filter(col('face') == "y_low").first().alias('w_y_low'),
+        col('w').filter(col('face') == "y_high").first().alias('w_y_high'),
         col('w').filter(col('face') == "z_low").first().alias('w_z_low'),
         col('w').filter(col('face') == "z_high").first().alias('w_z_high')
     ])

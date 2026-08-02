@@ -105,7 +105,7 @@ def main():
 
     print("Executing queries")
 
-    df_uvw, df_eps = pl.collect_all([lf_uvw, lf_eps])
+    df_uvw, df_eps = pl.collect_all([lf_uvw, lf_eps], engine="streaming")
 
     print(df_uvw.head())
 

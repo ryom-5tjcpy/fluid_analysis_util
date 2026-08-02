@@ -57,7 +57,7 @@ def main():
 
     print("Executing queries")
 
-    df_uvw_raw, df_eps = pl.collect_all([lf_uvw, lf_eps])
+    df_uvw_raw, df_eps = pl.collect_all([lf_uvw, lf_eps], engine="streaming")
     df_uvw = df_uvw_raw.pivot(on="face", index=["i", "j", "k"], values=["u", "v", "w"])
 
     df_uvw = df_uvw.with_columns([

@@ -51,16 +51,19 @@ def main():
         pl.when(local_x == 1).then(pl.lit("x_low")).when(local_x == coarsen_size).then(pl.lit("x_high"))
         .when(local_y == 1).then(pl.lit("y_low")).when(local_y == coarsen_size).then(pl.lit("y_high"))
         .when(local_z == 1).then(pl.lit("z_low")).when(local_z == coarsen_size).then(pl.lit("z_high"))
-        .alias("face"))
-    
-    lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean()).sort(["i", "j", "k"])
+        .alias("face")
+    )
 
-    print("Executing queries")
+    lf_uvw = lf_uvw.group_by(['i', 'j', 'k']).agg([
+        col('u').filter(col('face') == "x_low").first().alias('u_x_low'),
+        col('u').filter(col('face') == "x_high").first().alias('u_x_high'),
+        col('v').filter(col('face') == "y_low").first().alias('v_y_low'),
+        col('v').filter(col('face') == "y_high").first().alias('v_y_high'),
+        col('w').filter(col('face') == "z_low").first().alias('w_z_low'),
+        col('w').filter(col('face') == "z_high").first().alias('w_z_high')
+    ])
 
-    df_uvw_raw, df_eps = pl.collect_all([lf_uvw, lf_eps], engine="streaming")
-    df_uvw = df_uvw_raw.pivot(on="face", index=["i", "j", "k"], values=["u", "v", "w"])
-
-    df_uvw = df_uvw.with_columns([
+    lf_uvw = lf_uvw.with_columns([
         ((col('u_x_high') - col('u_x_low')) / (coarsen_size - 1)).alias('u_x_grad'),
         ((col('u_y_high') - col('u_y_low')) / (coarsen_size - 1)).alias('u_y_grad'),
         ((col('u_z_high') - col('u_z_low')) / (coarsen_size - 1)).alias('u_z_grad'),
@@ -72,19 +75,25 @@ def main():
         ((col('w_z_high') - col('w_z_low')) / (coarsen_size - 1)).alias('w_z_grad')
     ])
 
-    df_uvw = df_uvw.with_columns([
+    lf_uvw = lf_uvw.with_columns([
         (0.25 * ((col('u_y_grad') + col('v_x_grad')).pow(2))).alias('s_12'),
         (0.25 * ((col('v_z_grad') + col('w_y_grad')).pow(2))).alias('s_23'),
         (0.25 * ((col('w_x_grad') + col('u_z_grad')).pow(2))).alias('s_31')
     ])
 
-    df_uvw = df_uvw.with_columns(
+    lf_uvw = lf_uvw.with_columns(
         (col('u_x_grad').pow(2) + col('v_y_grad').pow(2) + col('w_z_grad').pow(2) + 2 * col('s_12') + 2 * col('s_23') + 2 * col('s_31')).alias('s2_row')
     )
 
-    df_uvw = df_uvw.with_columns(
+    lf_uvw = lf_uvw.with_columns(
         (col('s2_row') / col('s2_row').mean()).alias('s2')
     )
+
+    lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean())
+
+    print("Executing queries")
+
+    df_uvw, df_eps = pl.collect_all([lf_uvw, lf_eps])
 
     print(df_uvw.head())
 

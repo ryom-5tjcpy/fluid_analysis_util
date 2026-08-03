@@ -2,6 +2,7 @@ import glob
 import json
 import polars as pl
 from polars import col
+import numpy as np
 
 
 def main():
@@ -33,6 +34,7 @@ def main():
     lf = lf.with_columns([expr_i, expr_j, expr_k])
 
     h = coarsen_size // 2
+    rr = 2 * np.pi * (coarsen_size - 1) / 4096
 
     local_x = (col("gnx") - 1) % coarsen_size + 1
     local_y = (col("gny") - 1) % coarsen_size + 1
@@ -55,36 +57,36 @@ def main():
     )
 
     lf_uvw = lf_uvw.group_by(['i', 'j', 'k']).agg([
-        col('u').filter(col('face') == "x_low").first().alias('u_x_low'),
-        col('u').filter(col('face') == "x_high").first().alias('u_x_high'),
-        col('u').filter(col('face') == "y_low").first().alias('u_y_low'),
-        col('u').filter(col('face') == "y_high").first().alias('u_y_high'),
-        col('u').filter(col('face') == "z_low").first().alias('u_z_low'),
-        col('u').filter(col('face') == "z_high").first().alias('u_z_high'),
-        col('v').filter(col('face') == "x_low").first().alias('v_x_low'),
-        col('v').filter(col('face') == "x_high").first().alias('v_x_high'),
-        col('v').filter(col('face') == "y_low").first().alias('v_y_low'),
-        col('v').filter(col('face') == "y_high").first().alias('v_y_high'),
-        col('v').filter(col('face') == "z_low").first().alias('v_z_low'),
-        col('v').filter(col('face') == "z_high").first().alias('v_z_high'),
-        col('w').filter(col('face') == "x_low").first().alias('w_x_low'),
-        col('w').filter(col('face') == "x_high").first().alias('w_x_high'),
-        col('w').filter(col('face') == "y_low").first().alias('w_y_low'),
-        col('w').filter(col('face') == "y_high").first().alias('w_y_high'),
-        col('w').filter(col('face') == "z_low").first().alias('w_z_low'),
-        col('w').filter(col('face') == "z_high").first().alias('w_z_high')
+        col('u').filter(col('face') == "x_low").alias('u_x_low'),
+        col('u').filter(col('face') == "x_high").alias('u_x_high'),
+        col('u').filter(col('face') == "y_low").alias('u_y_low'),
+        col('u').filter(col('face') == "y_high").alias('u_y_high'),
+        col('u').filter(col('face') == "z_low").alias('u_z_low'),
+        col('u').filter(col('face') == "z_high").alias('u_z_high'),
+        col('v').filter(col('face') == "x_low").alias('v_x_low'),
+        col('v').filter(col('face') == "x_high").alias('v_x_high'),
+        col('v').filter(col('face') == "y_low").alias('v_y_low'),
+        col('v').filter(col('face') == "y_high").alias('v_y_high'),
+        col('v').filter(col('face') == "z_low").alias('v_z_low'),
+        col('v').filter(col('face') == "z_high").alias('v_z_high'),
+        col('w').filter(col('face') == "x_low").alias('w_x_low'),
+        col('w').filter(col('face') == "x_high").alias('w_x_high'),
+        col('w').filter(col('face') == "y_low").alias('w_y_low'),
+        col('w').filter(col('face') == "y_high").alias('w_y_high'),
+        col('w').filter(col('face') == "z_low").alias('w_z_low'),
+        col('w').filter(col('face') == "z_high").alias('w_z_high')
     ])
 
     lf_uvw = lf_uvw.with_columns([
-        ((col('u_x_high') - col('u_x_low')) / (coarsen_size - 1)).alias('u_x_grad'),
-        ((col('u_y_high') - col('u_y_low')) / (coarsen_size - 1)).alias('u_y_grad'),
-        ((col('u_z_high') - col('u_z_low')) / (coarsen_size - 1)).alias('u_z_grad'),
-        ((col('v_x_high') - col('v_x_low')) / (coarsen_size - 1)).alias('v_x_grad'),
-        ((col('v_y_high') - col('v_y_low')) / (coarsen_size - 1)).alias('v_y_grad'),
-        ((col('v_z_high') - col('v_z_low')) / (coarsen_size - 1)).alias('v_z_grad'),
-        ((col('w_x_high') - col('w_x_low')) / (coarsen_size - 1)).alias('w_x_grad'),
-        ((col('w_y_high') - col('w_y_low')) / (coarsen_size - 1)).alias('w_y_grad'),
-        ((col('w_z_high') - col('w_z_low')) / (coarsen_size - 1)).alias('w_z_grad')
+        ((col('u_x_high') - col('u_x_low')) / rr).alias('u_x_grad'),
+        ((col('u_y_high') - col('u_y_low')) / rr).alias('u_y_grad'),
+        ((col('u_z_high') - col('u_z_low')) / rr).alias('u_z_grad'),
+        ((col('v_x_high') - col('v_x_low')) / rr).alias('v_x_grad'),
+        ((col('v_y_high') - col('v_y_low')) / rr).alias('v_y_grad'),
+        ((col('v_z_high') - col('v_z_low')) / rr).alias('v_z_grad'),
+        ((col('w_x_high') - col('w_x_low')) / rr).alias('w_x_grad'),
+        ((col('w_y_high') - col('w_y_low')) / rr).alias('w_y_grad'),
+        ((col('w_z_high') - col('w_z_low')) / rr).alias('w_z_grad')
     ])
 
     lf_uvw = lf_uvw.with_columns([
@@ -105,12 +107,12 @@ def main():
 
     print("Executing queries")
 
-    df_uvw, df_eps = pl.collect_all([lf_uvw, lf_eps], engine="streaming")
+    df_uvw = lf_uvw.collect(engine="streaming")
 
     print(df_uvw.head())
 
-    df_eps = df_eps.sort(["i", "j", "k"])
-    df_eps.write_csv("coarsened_data.csv")
+    #df_eps = df_eps.sort(["i", "j", "k"])
+    #f_eps.write_csv("coarsened_data.csv")
 
     elapse = time.perf_counter() - start
     print(f"Elapsed time: {elapse}")

@@ -56,26 +56,10 @@ def main():
         .alias("face")
     )
 
-    lf_uvw = lf_uvw.group_by(['i', 'j', 'k']).agg([
-        col('u').filter(col('face') == "x_low").alias('u_x_low'),
-        col('u').filter(col('face') == "x_high").alias('u_x_high'),
-        col('u').filter(col('face') == "y_low").alias('u_y_low'),
-        col('u').filter(col('face') == "y_high").alias('u_y_high'),
-        col('u').filter(col('face') == "z_low").alias('u_z_low'),
-        col('u').filter(col('face') == "z_high").alias('u_z_high'),
-        col('v').filter(col('face') == "x_low").alias('v_x_low'),
-        col('v').filter(col('face') == "x_high").alias('v_x_high'),
-        col('v').filter(col('face') == "y_low").alias('v_y_low'),
-        col('v').filter(col('face') == "y_high").alias('v_y_high'),
-        col('v').filter(col('face') == "z_low").alias('v_z_low'),
-        col('v').filter(col('face') == "z_high").alias('v_z_high'),
-        col('w').filter(col('face') == "x_low").alias('w_x_low'),
-        col('w').filter(col('face') == "x_high").alias('w_x_high'),
-        col('w').filter(col('face') == "y_low").alias('w_y_low'),
-        col('w').filter(col('face') == "y_high").alias('w_y_high'),
-        col('w').filter(col('face') == "z_low").alias('w_z_low'),
-        col('w').filter(col('face') == "z_high").alias('w_z_high')
-    ])
+    df_uvw = lf_uvw.collect()
+    df_uvw = df_uvw.pivot(on="face", indexes=["i", "j", "k"], values=['u', 'v', 'w'], aggregate_function="first")
+
+    lf_uvw = df_uvw.lazy()
 
     lf_uvw = lf_uvw.with_columns([
         ((col('u_x_high') - col('u_x_low')) / rr).alias('u_x_grad'),
@@ -107,7 +91,7 @@ def main():
 
     print("Executing queries")
 
-    df_uvw = lf_uvw.collect(engine="streaming")
+    df_uvw = lf_uvw.collect(engine="streaming").sort(["i", "j", "k"])
 
     print(df_uvw.head())
 

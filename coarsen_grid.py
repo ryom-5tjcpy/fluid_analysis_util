@@ -49,17 +49,35 @@ def main():
     c6 = (local_x == h) & (local_y == h) & (local_z == coarsen_size)
 
     # 6つのパターンのいずれかに合致する行だけをフィルター
-    lf_uvw = lf.filter(c1 | c2 | c3 | c4 | c5 | c6).with_columns(
-        pl.when(local_x == 1).then(pl.lit("x_low")).when(local_x == coarsen_size).then(pl.lit("x_high"))
-        .when(local_y == 1).then(pl.lit("y_low")).when(local_y == coarsen_size).then(pl.lit("y_high"))
-        .when(local_z == 1).then(pl.lit("z_low")).when(local_z == coarsen_size).then(pl.lit("z_high"))
-        .alias("face")
-    )
+    lf_uvw = lf.filter(c1 | c2 | c3 | c4 | c5 | c6).with_columns([
+        c1.alias("face_x_min"),
+        c2.alias("face_y_min"),
+        c3.alias("face_z_min"),
+        c4.alias("face_x_max"),
+        c5.alias("face_y_max"),
+        c6.alias("face_z_max")
+    ])
 
-    df_uvw = lf_uvw.collect()
-    df_uvw = df_uvw.pivot(on="face", indexes=["i", "j", "k"], values=['u', 'v', 'w'], aggregate_function="first")
-
-    lf_uvw = df_uvw.lazy()
+    lf_uvw = lf_uvw.group_by(["i", "j", "k"]).agg([
+        col('u').filter(col('face_x_min') == True).first().alias('u_x_low'),
+        col('u').filter(col('face_x_max') == True).first().alias('u_x_high'),
+        col('u').filter(col('face_y_min') == True).first().alias('u_y_low'),
+        col('u').filter(col('face_y_max') == True).first().alias('u_y_high'),
+        col('u').filter(col('face_z_min') == True).first().alias('u_z_low'),
+        col('u').filter(col('face_z_max') == True).first().alias('u_z_high'),
+        col('v').filter(col('face_x_min') == True).first().alias('v_x_low'),
+        col('v').filter(col('face_x_max') == True).first().alias('v_x_high'),
+        col('v').filter(col('face_y_min') == True).first().alias('v_y_low'),
+        col('v').filter(col('face_y_max') == True).first().alias('v_y_high'),
+        col('v').filter(col('face_z_min') == True).first().alias('v_z_low'),
+        col('v').filter(col('face_z_max') == True).first().alias('v_z_high'),
+        col('w').filter(col('face_x_min') == True).first().alias('w_x_low'),
+        col('w').filter(col('face_x_max') == True).first().alias('w_x_high'),
+        col('w').filter(col('face_y_min') == True).first().alias('w_y_low'),
+        col('w').filter(col('face_y_max') == True).first().alias('w_y_high'),
+        col('w').filter(col('face_z_min') == True).first().alias('w_z_low'),
+        col('w').filter(col('face_z_max') == True).first().alias('w_z_high')
+    ])
 
     lf_uvw = lf_uvw.with_columns([
         ((col('u_x_high') - col('u_x_low')) / rr).alias('u_x_grad'),
@@ -87,7 +105,7 @@ def main():
         (col('s2_row') / col('s2_row').mean()).alias('s2')
     )
 
-    lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean())
+    #lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean())
 
     print("Executing queries")
 

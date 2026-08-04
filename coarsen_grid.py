@@ -103,13 +103,13 @@ def main():
 
     lf_uvw = lf_uvw.with_columns(
         (col('s2_row') / col('s2_row').mean()).alias('s2')
-    )
+    ).sort(["i", "j", "k"])
 
     #lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean())
 
     print("Executing queries")
 
-    df_uvw = lf_uvw.collect(engine="streaming").sort(["i", "j", "k"])
+    df_uvw = lf_uvw.collect(engine="streaming")
 
     print(df_uvw.head())
 

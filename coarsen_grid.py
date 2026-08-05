@@ -92,13 +92,13 @@ def main():
     ])
 
     lf_uvw = lf_uvw.with_columns([
-        (0.25 * ((col('u_y_grad') + col('v_x_grad')).pow(2))).alias('s_12'),
-        (0.25 * ((col('v_z_grad') + col('w_y_grad')).pow(2))).alias('s_23'),
-        (0.25 * ((col('w_x_grad') + col('u_z_grad')).pow(2))).alias('s_31')
+        (0.5 * (col('u_y_grad') + col('v_x_grad'))).alias('s_12'),
+        (0.5 * (col('v_z_grad') + col('w_y_grad'))).alias('s_23'),
+        (0.5 * (col('w_x_grad') + col('u_z_grad'))).alias('s_31')
     ])
 
     lf_uvw = lf_uvw.with_columns(
-        (col('u_x_grad').pow(2) + col('v_y_grad').pow(2) + col('w_z_grad').pow(2) + 2 * col('s_12') + 2 * col('s_23') + 2 * col('s_31')).alias('s2_row')
+        (col('u_x_grad').pow(2) + col('v_y_grad').pow(2) + col('w_z_grad').pow(2) + 2 * col('s_12').pow(2) + 2 * col('s_23').pow(2) + 2 * col('s_31').pow(2)).alias('s2_row')
     )
 
     lf_uvw = lf_uvw.with_columns(

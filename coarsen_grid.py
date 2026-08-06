@@ -117,8 +117,7 @@ def main():
     print("Executing queries")
 
     df_uvw = lf_uvw.collect(engine="streaming")
-
-    print(df_uvw.head())
+    df_uvw.write_csv("coarsened_uvw_data.csv")
 
     #df_eps = df_eps.sort(["i", "j", "k"])
     #f_eps.write_csv("coarsened_data.csv")

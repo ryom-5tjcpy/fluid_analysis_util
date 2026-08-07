@@ -109,8 +109,7 @@ def main():
         (col('s2_row') * col('vorticity_magnitude')).sqrt().alias('s2_vorticity'),
         (col('s2_row') / col('s2_row').mean()).alias('s2'),
         (col('vorticity_magnitude') / col('vorticity_magnitude').mean()).alias('o2'),
-        (col('s2_vorticity') / col('s2_vorticity').mean()).alias('so')
-    ).sort(["i", "j", "k"])
+    ).with_columns((col('s2_vorticity') / col('s2_vorticity').mean()).alias('so')).sort(["i", "j", "k"])
 
     #lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean())
 

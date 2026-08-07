@@ -103,10 +103,10 @@ def main():
     lf_uvw = lf_uvw.with_columns(
         (col('u_x_grad').pow(2) + col('v_y_grad').pow(2) + col('w_z_grad').pow(2) + 2 * col('s_12').pow(2) + 2 * col('s_23').pow(2) + 2 * col('s_31').pow(2)).alias('s2_row'),
         (col('vorticity_x').pow(2) + col('vorticity_y').pow(2) + col('vorticity_z').pow(2)).alias('vorticity_magnitude'),
-        (col('s2_row') * col('vorticity_magnitude')).sqrt().alias('s2_vorticity'),
     )
 
     lf_uvw = lf_uvw.with_columns(
+        (col('s2_row') * col('vorticity_magnitude')).sqrt().alias('s2_vorticity'),
         (col('s2_row') / col('s2_row').mean()).alias('s2'),
         (col('vorticity_magnitude') / col('vorticity_magnitude').mean()).alias('o2'),
         (col('s2_vorticity') / col('s2_vorticity').mean()).alias('so')

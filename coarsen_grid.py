@@ -109,14 +109,15 @@ def main():
         (col('s2_row') * col('vorticity_magnitude')).sqrt().alias('s2_vorticity'),
         (col('s2_row') / col('s2_row').mean()).alias('s2'),
         (col('vorticity_magnitude') / col('vorticity_magnitude').mean()).alias('o2'),
-    ).with_columns((col('s2_vorticity') / col('s2_vorticity').mean()).alias('so')).sort(["i", "j", "k"])
-
-    #lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean())
+    ).with_columns((col('s2_vorticity') / col('s2_vorticity').mean()).alias('so'))
 
     print("Executing queries")
 
-    df_uvw = lf_uvw.collect(engine="streaming")
-    df_uvw.write_csv("coarsened_uvw_data.csv")
+    df_calc = lf_uvw.select(["i", "j", "k", "so", "s2", "o2"]).sort(["i", "j", "k"]).collect(engine="streaming" )
+
+    #lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean())
+
+    df_calc.write_csv("coarsened_uvw_data.csv")
 
     #df_eps = df_eps.sort(["i", "j", "k"])
     #f_eps.write_csv("coarsened_data.csv")

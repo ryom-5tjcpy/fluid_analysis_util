@@ -111,16 +111,18 @@ def main():
         (col('vorticity_magnitude') / col('vorticity_magnitude').mean()).alias('o2'),
     ).with_columns((col('s2_vorticity') / col('s2_vorticity').mean()).alias('so'))
 
+
+    lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean().alias("eps_row")).with_columns(
+        (col("eps_row") / col("eps_row").mean()).alias("eps")
+    )
+
+    result_lf = lf_uvw.join(lf_eps, on=["i", "j", "k"], how="inner").select(["i", "j", "k", "so", "s2", "o2", "eps"])
+
     print("Executing queries")
 
-    df_calc = lf_uvw.select(["i", "j", "k", "so", "s2", "o2"]).sort(["i", "j", "k"]).collect(engine="streaming" )
+    df_calc = result_lf.sort(['i', 'j', 'k']).collect(engine="streaming")
 
-    #lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean())
-
-    df_calc.write_csv("coarsened_uvw_data.csv")
-
-    #df_eps = df_eps.sort(["i", "j", "k"])
-    #f_eps.write_csv("coarsened_data.csv")
+    df_calc.write_csv("coarsened.csv")
 
     elapse = time.perf_counter() - start
     print(f"Elapsed time: {elapse}")

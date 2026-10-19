@@ -3,13 +3,18 @@ import json
 
 from sim_data_loader import SimulationDataLoader
 import vtk_writer as vw
+from velocity_gradient import compute_boxcell_velocity_gradient
 
 
-def init_loader(dataset_key: str) -> SimulationDataLoader:
+def load_dataset_config(dataset_key: str) -> dict:
     with open("dataset_options.json", "r") as f:
         options = json.load(f)
 
-    dataset = options[dataset_key]
+    return options[dataset_key]
+
+
+def init_loader(dataset_key: str, dataset: dict | None = None) -> SimulationDataLoader:
+    dataset = dataset or load_dataset_config(dataset_key)
     base_path = f"/data/arrow_files/{dataset['data_type']}_{dataset['data_size']}_{dataset['step']}"
     
     data_pattern = f"{base_path}/data/{dataset['data_type']}_{dataset['data_size']}_*.arrow"
@@ -20,17 +25,23 @@ def init_loader(dataset_key: str) -> SimulationDataLoader:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Fluid Analysis Utility - Convert simulation data to VTK format'
+        description='Fluid Analysis Utility - Export simulation data or calculate velocity gradients'
     )
 
     parser.add_argument('--dataset', type=str, required=True, help='Type of the dataset')
-    parser.add_argument('--output', type=str, required=True, help='Output VTK file path')
+    parser.add_argument('--output', type=str, required=True, help='Output VTK or CSV file path')
     parser.add_argument('x', type=int, help='X coordinate origin')
     parser.add_argument('y', type=int,help='Y coordinate origin')
     parser.add_argument('z', type=int,help='Z coordinate origin')
     parser.add_argument('size', type=int, help='Size of the region to fetch')
     parser.add_argument('columns', type=str, nargs='*', help='Column names to fetch')
-    parser.add_argument('--velocity', action='store_true', help='Include velocity fields')
+    output_group = parser.add_mutually_exclusive_group()
+    output_group.add_argument('--velocity', action='store_true', help='Include velocity fields')
+    output_group.add_argument(
+        '--velocity-gradient',
+        action='store_true',
+        help='Calculate one velocity-gradient tensor from the boxcell face centers and write CSV',
+    )
 
     args = parser.parse_args()
     
@@ -51,16 +62,47 @@ def main():
                 f"Missing: {', '.join(sorted(missing_columns))}."
             )
             exit(1)
-    
-    if not str.endswith(args.output, ".vtk"):
+    if args.velocity_gradient:
+        required_velocity_columns = {"u", "v", "w"}
+        provided_columns = set(args.columns)
+        missing_columns = required_velocity_columns - provided_columns
+        if missing_columns:
+            parser.error(
+                "--velocity-gradient requires the following columns: u, v, w. "
+                f"Missing: {', '.join(sorted(missing_columns))}."
+            )
+        if not args.output.endswith(".csv"):
+            parser.error("Output file must have a .csv extension with --velocity-gradient.")
+        if args.size < 4 or args.size % 2 != 0:
+            parser.error("--velocity-gradient requires an even size greater than or equal to 4.")
+    elif not args.output.endswith(".vtk"):
         print("Error: Output file must have a .vtk extension.")
         exit(1)
 
-    loader = init_loader(args.dataset)
+    dataset = load_dataset_config(args.dataset)
+    loader = init_loader(args.dataset, dataset)
 
-    boxcell = loader.fetch_boxcell(args.x, args.y, args.z, args.size, args.columns, sort_order=['nn', 'gny', 'gnx'], streaming=True)
+    columns = args.columns
+    if args.velocity_gradient:
+        columns = sorted(set(columns) | {"gnx", "gny", "nn", "u", "v", "w"})
+    boxcell = loader.fetch_boxcell(
+        args.x,
+        args.y,
+        args.z,
+        args.size,
+        columns,
+        sort_order=['nn', 'gny', 'gnx'],
+        streaming=True,
+    )
 
-    if args.velocity:
+    if args.velocity_gradient:
+        gradients = compute_boxcell_velocity_gradient(
+            boxcell,
+            args.size,
+            dataset["data_size"],
+        )
+        gradients.write_csv(args.output)
+    elif args.velocity:
         scalar_fields = [x for x in args.columns if x not in ['u', 'v', 'w']]
         vw.save(args.output, boxcell, args.size, args.x, args.y, args.z, scalar_fields, {"velocity": ['u', 'v', 'w']})
     else:

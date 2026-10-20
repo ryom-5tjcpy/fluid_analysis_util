@@ -1,23 +1,32 @@
 # 石原研究室用の流体解析のユーティリティ
 
-このリポジトリは石原研での研究活動において解析したいデータをビッグデータから抽出するプログラムである。
+このリポジトリは、石原研での研究活動において解析対象のデータを抽出するプログラムです。
 
-## 出力形式
+## 実行方法
 
-出力形式は `--format csv` または `--format vtk` で指定できる。省略時は出力ファイル名の拡張子から判定する。CSVでは取得した列をそのまま出力し、VTKでは従来どおりスカラー場・ベクトル場として出力する。`--velocity-gradient` の出力はCSVのみ対応する。
+`main.py` は、データセット名と出力先をオプションで指定し、領域の原点・サイズ・取得列を位置引数で指定します。
+
+```text
+python main.py --dataset <データセット名> --output <出力ファイル> [--format csv|vtk] <x> <y> <z> <size> [<列名> ...]
+```
+
+- `--dataset`: 必須。`dataset_options.json` に定義されたデータセット名を指定します（例: `keta1_4096`、`keta2_4096`、`keta2_8192`）。
+- `--output`: 必須。出力ファイルのパスを指定します。
+- `--format`: 省略可能。`csv` または `vtk` を指定します。省略時は出力ファイルの拡張子（`.csv` または `.vtk`）から判定されます。指定した形式と拡張子が一致しない場合はエラーになります。
+- `x`, `y`, `z`: 取得領域の原点座標を整数で指定します。
+- `size`: 取得領域のサイズを整数で指定します。
+- `列名`: 取得する列名を0個以上指定します。複数列は空白で区切ります。
+
+CSV形式で `keta2_4096` データセットから取得する例:
 
 ```sh
-python main.py --dataset keta2_4096 --output boxcell.csv --format csv \
+python main.py --dataset keta2_4096 --output boxcell.csv \
   1 1 1 64 gnx gny nn u v w
 ```
 
-## boxcellの速度勾配
-
-`main.py` の `--velocity-gradient` を指定すると、取得したboxcellの各軸の面中心6点を使い、boxcellにつき1組の速度勾配テンソルを計算してCSVに出力する。格子間隔は `coarsen_grid.py` と同じ角度座標の式 `2π × (size - 1) / data_size` を使用する。`size` は4以上の偶数を指定する。
+VTK形式を明示して出力する例:
 
 ```sh
-python main.py --dataset keta2_4096 --output velocity_gradient.csv \
-  --velocity-gradient 1 1 1 64 u v w
+python main.py --dataset keta2_4096 --output boxcell.vtk --format vtk \
+  1 1 1 64 gnx gny nn u v w
 ```
-
-CSVにはboxcellの原点 (`gnx`, `gny`, `nn`)、速度勾配テンソル `∇u` の9成分 (`u_x_grad` から `w_z_grad`)、対称なひずみ速度テンソル `S = (∇u + ∇uᵀ) / 2` (`s_xx` から `s_zz`)、反対称な渦度テンソル `Ω = (∇u - ∇uᵀ) / 2` (`omega_xx` から `omega_zz`)、および `coarsen_grid.py` と同じ定義の渦度ベクトル (`vorticity_x`, `vorticity_y`, `vorticity_z`) が1行で出力される。

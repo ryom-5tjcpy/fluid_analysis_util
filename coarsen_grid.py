@@ -77,6 +77,11 @@ def main():
         col('w').filter(col('face_y_max') == True).first().alias('w_y_high'),
         col('w').filter(col('face_z_min') == True).first().alias('w_z_low'),
         col('w').filter(col('face_z_max') == True).first().alias('w_z_high')
+    ]).select([
+        "i", "j", "k",
+        "u_x_low", "u_x_high", "u_y_low", "u_y_high", "u_z_low", "u_z_high",
+        "v_x_low", "v_x_high", "v_y_low", "v_y_high", "v_z_low", "v_z_high",
+        "w_x_low", "w_x_high", "w_y_low", "w_y_high", "w_z_low", "w_z_high"
     ])
 
     lf_uvw = lf_uvw.with_columns([
@@ -89,6 +94,11 @@ def main():
         ((col('w_x_high') - col('w_x_low')) / rr).alias('w_x_grad'),
         ((col('w_y_high') - col('w_y_low')) / rr).alias('w_y_grad'),
         ((col('w_z_high') - col('w_z_low')) / rr).alias('w_z_grad')
+    ]).select([
+        "i", "j", "k",
+        "u_x_grad", "u_y_grad", "u_z_grad",
+        "v_x_grad", "v_y_grad", "v_z_grad",
+        "w_x_grad", "w_y_grad", "w_z_grad"
     ])
 
     lf_uvw = lf_uvw.with_columns([
@@ -111,8 +121,16 @@ def main():
         (col('vorticity_magnitude') / col('vorticity_magnitude').mean()).alias('o2'),
     ).with_columns((col('s2_vorticity') / col('s2_vorticity').mean()).alias('so'))
 
+    mean_eps = lf.select(col("eps").mean().alias("mean_eps"))
 
-    lf_eps = lf.group_by(["i", "j", "k"]).agg(col("eps").mean().alias("eps_row")).with_columns(
+    mean_uvw = lf_uvw.select(col("s2_row").mean().alias("mean_s2_row"), col("vorticity_magnitude").mean().alias("mean_vorticity_magnitude"), col("s2_vorticity").mean().alias("mean_s2_vorticity"))
+
+    df_mean = pl.concat([mean_eps, mean_uvw], how="horizontal")
+    print(df_mean.collect(engine="streaming"))
+
+    lf_eps = lf.select(["i", "j", "k", "eps"]).group_by([
+        "i", "j", "k"
+    ]).agg(col("eps").mean().alias("eps_row")).with_columns(
         (col("eps_row") / col("eps_row").mean()).alias("eps")
     )
 

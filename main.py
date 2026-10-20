@@ -3,7 +3,6 @@ import json
 
 from sim_data_loader import SimulationDataLoader
 import vtk_writer as vw
-from velocity_gradient import compute_boxcell_velocity_gradient
 
 
 def load_dataset_config(dataset_key: str) -> dict:
@@ -25,25 +24,36 @@ def init_loader(dataset_key: str, dataset: dict | None = None) -> SimulationData
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Fluid Analysis Utility - Export simulation data or calculate velocity gradients'
+        description='Fluid Analysis Utility - Export simulation data'
     )
 
     parser.add_argument('--dataset', type=str, required=True, help='Type of the dataset')
     parser.add_argument('--output', type=str, required=True, help='Output VTK or CSV file path')
+    parser.add_argument(
+        '--format',
+        dest='output_format',
+        choices=('csv', 'vtk'),
+        help='Output format (defaults to the format inferred from the output filename)',
+    )
     parser.add_argument('x', type=int, help='X coordinate origin')
     parser.add_argument('y', type=int,help='Y coordinate origin')
     parser.add_argument('z', type=int,help='Z coordinate origin')
     parser.add_argument('size', type=int, help='Size of the region to fetch')
     parser.add_argument('columns', type=str, nargs='*', help='Column names to fetch')
-    output_group = parser.add_mutually_exclusive_group()
-    output_group.add_argument('--velocity', action='store_true', help='Include velocity fields')
-    output_group.add_argument(
-        '--velocity-gradient',
-        action='store_true',
-        help='Calculate one velocity-gradient tensor from the boxcell face centers and write CSV',
-    )
+    parser.add_argument('velocity', action='store_true', help='Include velocity fields')
 
     args = parser.parse_args()
+
+    output_format = args.output_format
+    if output_format is None:
+        if args.output.lower().endswith('.csv'):
+            output_format = 'csv'
+        elif args.output.lower().endswith('.vtk'):
+            output_format = 'vtk'
+        else:
+            parser.error('Output file must have a .csv or .vtk extension.')
+    if not args.output.lower().endswith(f'.{output_format}'):
+        parser.error(f'Output file must have a .{output_format} extension.')
     
     print(f"Dataset: {args.dataset}")
     print(f"Output file: {args.output}")
@@ -62,25 +72,8 @@ def main():
                 f"Missing: {', '.join(sorted(missing_columns))}."
             )
             exit(1)
-    if args.velocity_gradient:
-        required_velocity_columns = {"u", "v", "w"}
-        provided_columns = set(args.columns)
-        missing_columns = required_velocity_columns - provided_columns
-        if missing_columns:
-            parser.error(
-                "--velocity-gradient requires the following columns: u, v, w. "
-                f"Missing: {', '.join(sorted(missing_columns))}."
-            )
-        if not args.output.endswith(".csv"):
-            parser.error("Output file must have a .csv extension with --velocity-gradient.")
-        if args.size < 4 or args.size % 2 != 0:
-            parser.error("--velocity-gradient requires an even size greater than or equal to 4.")
-    elif not args.output.endswith(".vtk"):
-        print("Error: Output file must have a .vtk extension.")
-        exit(1)
 
-    dataset = load_dataset_config(args.dataset)
-    loader = init_loader(args.dataset, dataset)
+    loader = init_loader(args.dataset)
 
     columns = args.columns
     if args.velocity_gradient:
@@ -95,13 +88,8 @@ def main():
         streaming=True,
     )
 
-    if args.velocity_gradient:
-        gradients = compute_boxcell_velocity_gradient(
-            boxcell,
-            args.size,
-            dataset["data_size"],
-        )
-        gradients.write_csv(args.output)
+    if output_format == 'csv':
+        boxcell.write_csv(args.output)
     elif args.velocity:
         scalar_fields = [x for x in args.columns if x not in ['u', 'v', 'w']]
         vw.save(args.output, boxcell, args.size, args.x, args.y, args.z, scalar_fields, {"velocity": ['u', 'v', 'w']})

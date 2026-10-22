@@ -34,8 +34,26 @@ class SimulationDataLoader:
                 f"No IPC files found for pattern: {pattern}. "
                 "Please verify the dataset key and base path."
             )
+
+        index_path = Path(index_file)
+
+        try:
+            if index_path.exists():
+                with open(index_path, 'r') as f:
+                    self.file_index = json.load(f)
+
+                need_reindex = len(self.file_index) != len(self.files)
+            else:
+                need_reindex = True
+        except Exception as e:
+            print(f"Error occurred while loading index: {e}")
+            need_reindex = True
+
+        if need_reindex:
+            self.create_index(100)
         
-        self.data = pl.scan_ipc(self.files)
+        # Build spatial grid index for fast range queries
+        self._build_spatial_index()
     
     def _build_spatial_index(self):
         """Build a grid-based spatial index for fast file lookups."""
@@ -170,7 +188,9 @@ class SimulationDataLoader:
         """
         target_files = target_files or self.files
 
-        df = self.data
+        print(f" Querying {len(target_files)}/{len(self.files)} files")
+
+        df = pl.scan_ipc(target_files)
 
         if conditions:
             df = df.filter(pl.all_horizontal(conditions))
@@ -206,8 +226,8 @@ class SimulationDataLoader:
         """
 
         conditions = [
-            (col("gnx") >= x) & (col("gnx") < x + size),
-            (col("gny") >= y) & (col("gny") < y + size),
-            (col("nn") >= z) & (col("nn") < z + size)
+            col("gnx").is_between(x, x + size, closed="left"),
+            col("gny").is_between(y, y + size, closed="left"),
+            col("nn").is_between(z, z + size, closed="left")
         ]
         return self.query(target_files=None, columns=columns, conditions=conditions, sort_order=sort_order, descending=descending, limit=limit, streaming=streaming)

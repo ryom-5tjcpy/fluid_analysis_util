@@ -75,15 +75,12 @@ def main():
 
     loader = init_loader(args.dataset)
 
-    columns = args.columns
-    if args.velocity_gradient:
-        columns = sorted(set(columns) | {"gnx", "gny", "nn", "u", "v", "w"})
     boxcell = loader.fetch_boxcell(
         args.x,
         args.y,
         args.z,
         args.size,
-        columns,
+        args.columns,
         sort_order=['nn', 'gny', 'gnx'],
         streaming=True,
     )

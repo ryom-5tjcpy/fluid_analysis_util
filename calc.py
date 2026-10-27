@@ -31,6 +31,13 @@ def main():
     c_y_1: pl.Expr = (col("gnx") == x + center_grid) & (col("gny") == y + args.grid_size - 1) & (col("nn") == z + center_grid)
     c_z_1: pl.Expr = (col("gnx") == x + center_grid) & (col("gny") == y + center_grid) & (col("nn") == z + args.grid_size - 1)
 
+    # c_x_0 = col("gnx") == x
+    # c_y_0 = col("gny") == y
+    # c_z_0 = col("nn") == z
+    # c_x_1 = col("gnx") == x + args.grid_size - 1
+    # c_y_1 = col("gny") == y + args.grid_size - 1
+    # c_z_1 = col("nn") == z + args.grid_size - 1
+
     df = lf.filter(c_x_0 | c_y_0 | c_z_0 | c_x_1 | c_y_1 | c_z_1).with_columns([
         c_x_0.alias("face_x_0"),
         c_y_0.alias("face_y_0"),

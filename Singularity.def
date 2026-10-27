@@ -22,3 +22,6 @@ From: python:3.12.3-slim
 
 %apprun coarsen_grid
     exec python /app/coarsen_grid.py
+
+%apprun calc
+    exec python /app/calc.py "$@"

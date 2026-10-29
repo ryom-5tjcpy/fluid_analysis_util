@@ -1,29 +1,33 @@
 from sim_data_loader import SimulationDataLoader
 
+import argparse
 import json
+import numpy as np
 
 from polars import col
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", type=str, required=True, help="Dataset name")
+    parser.add_argument("--size", type=int, required=True, help="Grid size")
+    args = parser.parse_args()
+
     with open("dataset_options.json", "r") as f:
         dataset_options = json.load(f)
 
-    dataset = dataset_options["keta2_4096"]
+    dataset = dataset_options[args.dataset]
     base_path = f"/data/arrow_files/{dataset['data_type']}_{dataset['data_size']}_{dataset['step']}"
     data_pattern = f"{base_path}/data/{dataset['data_type']}_{dataset['data_size']}_*.arrow"
     index_file = f"{dataset['data_type']}_{dataset['data_size']}_index.json"
 
     loader = SimulationDataLoader(data_pattern, index_file)
 
-    i_list = [i for i in range(64) for _ in range(64) for _ in range(64)]
-    j_list = [j for _ in range(64) for j in range(64) for _ in range(64)]
-    k_list = [k for _ in range(64) for _ in range(64) for k in range(64)]
+    size = int(args.size)
+    i_list = [i for i in range(size) for _ in range(size) for _ in range(size)]
+    j_list = [j for _ in range(size) for j in range(size) for _ in range(size)]
+    k_list = [k for _ in range(size) for _ in range(size) for k in range(size)]
 
-    size = 64
-
-    from numpy import pi
-
-    rr = 2 * pi / (size - 1) / 4096
+    rr = 2 * np.pi / (size - 1) / 4096
     center_grid = size // 2
 
     local_x = (col("gnx") - 1) % size + 1

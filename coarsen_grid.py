@@ -4,7 +4,10 @@ import argparse
 import json
 import numpy as np
 
-from polars import col
+from polars import col, DataFrame, Expr
+
+def fetch_face_mean(df: DataFrame, face_flag: Expr) -> np.ndarray:
+    return np.array(df.filter(face_flag).select(["u", "v", "w"]).mean())
 
 def main():
     parser = argparse.ArgumentParser()
@@ -35,20 +38,20 @@ def main():
     local_z = (col("nn") - 1) % size + 1
 
     # center point of surface
-    x_0_flag = (local_x == 1) & (local_y == center_grid) & (local_z == center_grid)
-    y_0_flag = (local_x == center_grid) & (local_y == 1) & (local_z == center_grid)
-    z_0_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == 1)
-    x_1_flag = (local_x == size) & (local_y == center_grid) & (local_z == center_grid)
-    y_1_flag = (local_x == center_grid) & (local_y == size) & (local_z == center_grid)
-    z_1_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == size)
+    x0_flag = (local_x == 1) & (local_y == center_grid) & (local_z == center_grid)
+    y0_flag = (local_x == center_grid) & (local_y == 1) & (local_z == center_grid)
+    z0_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == 1)
+    x1_flag = (local_x == size) & (local_y == center_grid) & (local_z == center_grid)
+    y1_flag = (local_x == center_grid) & (local_y == size) & (local_z == center_grid)
+    z1_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == size)
 
     # points of surface
-    # x_0_flag = local_x == 1
-    # y_0_flag = local_y == 1
-    # z_0_flag = local_z == 1
-    # x_1_flag = local_x == size
-    # y_1_flag = local_y == size
-    # z_1_flag = local_z == size
+    # x0_flag = local_x == 1
+    # y0_flag = local_y == 1
+    # z0_flag = local_z == 1
+    # x1_flag = local_x == size
+    # y1_flag = local_y == size
+    # z1_flag = local_z == size
 
     for i in range(size ** 3):
         x = size * i_list[i] + 1
@@ -57,14 +60,16 @@ def main():
 
         boxcell = loader.fetch_boxcell(x, y, z, size, ["gnx", "gny", "nn", "u", "v", "w", "eps"])
 
-        boxcell_filtered = boxcell.filter(x_0_flag | y_0_flag | z_0_flag | x_1_flag | y_1_flag | z_1_flag).with_columns([
-            x_0_flag.alias("x_0_flag"),
-            y_0_flag.alias("y_0_flag"),
-            z_0_flag.alias("z_0_flag"),
-            x_1_flag.alias("x_1_flag"),
-            y_1_flag.alias("y_1_flag"),
-            z_1_flag.alias("z_1_flag")
+        boxcell_filtered = boxcell.filter(x0_flag | y0_flag | z0_flag | x1_flag | y1_flag | z1_flag).with_columns([
+            x0_flag.alias("x_0_flag"),
+            y0_flag.alias("y_0_flag"),
+            z0_flag.alias("z_0_flag"),
+            x1_flag.alias("x_1_flag"),
+            y1_flag.alias("y_1_flag"),
+            z1_flag.alias("z_1_flag")
         ])
+
+        print(fetch_face_mean(boxcell_filtered, x0_flag))
 
 
 if __name__ == "__main__":

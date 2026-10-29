@@ -4,10 +4,18 @@ import argparse
 import json
 import numpy as np
 
+from numpy.linalg import det
 from polars import col, DataFrame, Expr
 
 def fetch_face_mean(df: DataFrame, face_flag: Expr) -> np.ndarray:
-    return np.array(df.filter(face_flag).select(["u", "v", "w"]).mean())
+    """
+    Fetch the mean velocity components for a given face flag.
+
+    ### parameter
+    * df: DataFrame - The input DataFrame
+    * face_flag: Expr - The flag indicating the face of interest
+    """
+    return np.array(df.filter(face_flag).select(["u", "v", "w"]).mean().row(0))
 
 def main():
     parser = argparse.ArgumentParser()
@@ -26,9 +34,10 @@ def main():
     loader = SimulationDataLoader(data_pattern, index_file)
 
     size = int(args.size)
-    i_list = [i for i in range(size) for _ in range(size) for _ in range(size)]
-    j_list = [j for _ in range(size) for j in range(size) for _ in range(size)]
-    k_list = [k for _ in range(size) for _ in range(size) for k in range(size)]
+    n_iter = size ** 3
+    i_list = np.repeat(np.arange(1, size + 1), size * size)
+    j_list = np.repeat(np.tile(np.arange(1, size + 1), size), size)
+    k_list = np.tile(np.arange(1, size + 1), size * size)
 
     rr = 2 * np.pi / (size - 1) / 4096
     center_grid = size // 2
@@ -53,10 +62,16 @@ def main():
     # y1_flag = local_y == size
     # z1_flag = local_z == size
 
-    for i in range(size ** 3):
-        x = size * i_list[i] + 1
-        y = size * j_list[i] + 1
-        z = size * k_list[i] + 1
+    strain_magnitude_array = np.zeros(n_iter)
+    vorticity_magnitude_array = np.zeros(n_iter)
+    q_array = np.zeros(n_iter)
+    velocity_div_array = np.zeros(n_iter)
+    velocity_grad_determinant_array = np.zeros(n_iter)
+
+    for i in range(n_iter):
+        x = size * i_list[i]
+        y = size * j_list[i]
+        z = size * k_list[i]
 
         boxcell = loader.fetch_boxcell(x, y, z, size, ["gnx", "gny", "nn", "u", "v", "w", "eps"])
 
@@ -69,7 +84,58 @@ def main():
             z1_flag.alias("z_1_flag")
         ])
 
-        print(fetch_face_mean(boxcell_filtered, x0_flag))
+        u_x0, v_x0, w_x0 = fetch_face_mean(boxcell_filtered, x0_flag)
+        u_y0, v_y0, w_y0 = fetch_face_mean(boxcell_filtered, y0_flag)
+        u_z0, v_z0, w_z0 = fetch_face_mean(boxcell_filtered, z0_flag)
+        u_x1, v_x1, w_x1 = fetch_face_mean(boxcell_filtered, x1_flag)
+        u_y1, v_y1, w_y1 = fetch_face_mean(boxcell_filtered, y1_flag)
+        u_z1, v_z1, w_z1 = fetch_face_mean(boxcell_filtered, z1_flag)
+
+        velocity_grad_tensor = np.array([
+            [u_x1 - u_x0, u_y1 - u_y0, u_z1 - u_z0],
+            [v_x1 - v_x0, v_y1 - v_y0, v_z1 - v_z0],
+            [w_x1 - w_x0, w_y1 - w_y0, w_z1 - w_z0]
+        ]) / rr
+
+        vorticity_tensor = np.zeros((3, 3))
+        vorticity_tensor[0, 1] = 0.5 * (velocity_grad_tensor[0, 1] - velocity_grad_tensor[1, 0])
+        vorticity_tensor[1, 2] = 0.5 * (velocity_grad_tensor[1, 2] - velocity_grad_tensor[2, 1])
+        vorticity_tensor[2, 0] = 0.5 * (velocity_grad_tensor[2, 0] - velocity_grad_tensor[0, 2])
+        vorticity_tensor[1, 0] = -vorticity_tensor[0, 1]
+        vorticity_tensor[2, 1] = -vorticity_tensor[1, 2]
+        vorticity_tensor[0, 2] = -vorticity_tensor[2, 0]
+
+        strain_tensor = velocity_grad_tensor - vorticity_tensor
+
+        strain_magnitude_array[i] = np.sum(strain_tensor ** 2)
+        vorticity_magnitude_array[i] = np.sum(vorticity_tensor ** 2)
+        q_array[i] = 0.5 * (vorticity_magnitude_array[i] - strain_magnitude_array[i])
+        velocity_div_array[i] = np.trace(velocity_grad_tensor)
+        velocity_grad_determinant_array[i] = det(velocity_grad_tensor)
+
+
+    df = DataFrame({
+        "i": i_list,
+        "j": j_list,
+        "k": k_list,
+        "strain_magnitude": strain_magnitude_array,
+        "vorticity_magnitude": vorticity_magnitude_array,
+        "q": q_array,
+        "velocity_divergence": velocity_div_array,
+        "velocity_grad_determinant": velocity_grad_determinant_array
+    })
+
+    df.write_csv(f"coarsened_{size}.csv")
+
+    df_normalized = df.select([
+        col("i"),
+        col("j"),
+        col("k"),
+        (col("strain_magnitude") / col("strain_magnitude").mean()).alias("s2"),
+        (col("vorticity_magnitude") / col("vorticity_magnitude").mean()).alias("o2"),
+    ]).with_columns((col("o2") - col("s2")).alias("q"))
+
+    df_normalized.write_csv(f"coarsened_normalized_{size}.csv")
 
 
 if __name__ == "__main__":

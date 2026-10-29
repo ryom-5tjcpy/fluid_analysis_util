@@ -34,6 +34,7 @@ def main():
     local_y = (col("gny") - 1) % size + 1
     local_z = (col("nn") - 1) % size + 1
 
+    # center point of surface
     x_0_flag = (local_x == 1) & (local_y == center_grid) & (local_z == center_grid)
     y_0_flag = (local_x == center_grid) & (local_y == 1) & (local_z == center_grid)
     z_0_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == 1)
@@ -41,14 +42,22 @@ def main():
     y_1_flag = (local_x == center_grid) & (local_y == size) & (local_z == center_grid)
     z_1_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == size)
 
-    for i in range(5):
+    # points of surface
+    # x_0_flag = local_x == 1
+    # y_0_flag = local_y == 1
+    # z_0_flag = local_z == 1
+    # x_1_flag = local_x == size
+    # y_1_flag = local_y == size
+    # z_1_flag = local_z == size
+
+    for i in range(size ** 3):
         x = size * i_list[i] + 1
         y = size * j_list[i] + 1
         z = size * k_list[i] + 1
 
         boxcell = loader.fetch_boxcell(x, y, z, size, ["gnx", "gny", "nn", "u", "v", "w", "eps"])
 
-        boxcell = boxcell.filter(x_0_flag | y_0_flag | z_0_flag | x_1_flag | y_1_flag | z_1_flag).with_columns([
+        boxcell_filtered = boxcell.filter(x_0_flag | y_0_flag | z_0_flag | x_1_flag | y_1_flag | z_1_flag).with_columns([
             x_0_flag.alias("x_0_flag"),
             y_0_flag.alias("y_0_flag"),
             z_0_flag.alias("z_0_flag"),
@@ -57,7 +66,6 @@ def main():
             z_1_flag.alias("z_1_flag")
         ])
 
-        print(boxcell)
 
 if __name__ == "__main__":
     main()

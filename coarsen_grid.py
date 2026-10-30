@@ -67,6 +67,7 @@ def main():
     q_array = np.zeros(n_iter)
     div_velocity_array = np.zeros(n_iter)
     det_grad_velocity_array = np.zeros(n_iter)
+    eps_array = np.zeros(n_iter)
 
     for i in range(n_iter):
         x = size * (i_list[i] - 1) + 1
@@ -113,6 +114,8 @@ def main():
         div_velocity_array[i] = np.trace(velocity_grad_tensor)
         det_grad_velocity_array[i] = det(velocity_grad_tensor)
 
+        eps_array[i] = boxcell_filtered.select(col("eps")).mean().collect().row(0)[0]
+
 
     df = DataFrame({
         "i": i_list,
@@ -121,8 +124,9 @@ def main():
         "strain_magnitude": strain_magnitude_array,
         "vorticity_magnitude": vorticity_magnitude_array,
         "q": q_array,
-        "velocity_divergence": div_velocity_array,
-        "velocity_grad_determinant": det_grad_velocity_array
+        "div_velocity": div_velocity_array,
+        "det_grad_velocity": det_grad_velocity_array,
+        "eps": eps_array
     })
 
     df.write_csv(f"coarsened_{size}.csv")
@@ -133,6 +137,7 @@ def main():
         col("k"),
         (col("strain_magnitude") / col("strain_magnitude").mean()).alias("s2"),
         (col("vorticity_magnitude") / col("vorticity_magnitude").mean()).alias("o2"),
+        (col("eps") / col("eps").mean()).alias("eps")
     ]).with_columns((col("o2") - col("s2")).alias("q"))
 
     df_normalized.write_csv(f"coarsened_normalized_{size}.csv")

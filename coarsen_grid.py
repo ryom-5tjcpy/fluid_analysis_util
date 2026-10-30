@@ -114,7 +114,7 @@ def main():
         div_velocity_array[i] = np.trace(velocity_grad_tensor)
         det_grad_velocity_array[i] = det(velocity_grad_tensor)
 
-        eps_array[i] = boxcell_filtered.select(col("eps")).mean().row(0)
+        eps_array[i] = boxcell_filtered.select(col("eps")).mean().row(0)[0]
 
 
     df = DataFrame({

@@ -69,9 +69,9 @@ def main():
     velocity_grad_determinant_array = np.zeros(n_iter)
 
     for i in range(n_iter):
-        x = size * i_list[i]
-        y = size * j_list[i]
-        z = size * k_list[i]
+        x = size * (i_list[i] - 1) + 1
+        y = size * (j_list[i] - 1) + 1
+        z = size * (k_list[i] - 1) + 1
 
         boxcell = loader.fetch_boxcell(x, y, z, size, ["gnx", "gny", "nn", "u", "v", "w", "eps"])
 

@@ -34,10 +34,12 @@ def main():
     loader = SimulationDataLoader(data_pattern, index_file)
 
     size = int(args.size)
-    n_iter = size ** 3
-    i_list = np.repeat(np.arange(1, size + 1), size * size)
-    j_list = np.repeat(np.tile(np.arange(1, size + 1), size), size)
-    k_list = np.tile(np.arange(1, size + 1), size * size)
+    data_size = dataset['data_size']
+    coarsened_size = data_size // size
+    n_iter = coarsened_size ** 3
+    i_list = np.repeat(np.arange(1, coarsened_size + 1), coarsened_size * coarsened_size)
+    j_list = np.repeat(np.tile(np.arange(1, coarsened_size + 1), coarsened_size), coarsened_size)
+    k_list = np.tile(np.arange(1, coarsened_size + 1), coarsened_size * coarsened_size)
 
     rr = 2 * np.pi / (size - 1) / 4096
     center_grid = size // 2

@@ -65,8 +65,8 @@ def main():
     strain_magnitude_array = np.zeros(n_iter)
     vorticity_magnitude_array = np.zeros(n_iter)
     q_array = np.zeros(n_iter)
-    velocity_div_array = np.zeros(n_iter)
-    velocity_grad_determinant_array = np.zeros(n_iter)
+    div_velocity_array = np.zeros(n_iter)
+    det_grad_velocity_array = np.zeros(n_iter)
 
     for i in range(n_iter):
         x = size * (i_list[i] - 1) + 1
@@ -110,8 +110,8 @@ def main():
         strain_magnitude_array[i] = np.sum(strain_tensor ** 2)
         vorticity_magnitude_array[i] = np.sum(vorticity_tensor ** 2)
         q_array[i] = 0.5 * (vorticity_magnitude_array[i] - strain_magnitude_array[i])
-        velocity_div_array[i] = np.trace(velocity_grad_tensor)
-        velocity_grad_determinant_array[i] = det(velocity_grad_tensor)
+        div_velocity_array[i] = np.trace(velocity_grad_tensor)
+        det_grad_velocity_array[i] = det(velocity_grad_tensor)
 
 
     df = DataFrame({
@@ -121,8 +121,8 @@ def main():
         "strain_magnitude": strain_magnitude_array,
         "vorticity_magnitude": vorticity_magnitude_array,
         "q": q_array,
-        "velocity_divergence": velocity_div_array,
-        "velocity_grad_determinant": velocity_grad_determinant_array
+        "velocity_divergence": div_velocity_array,
+        "velocity_grad_determinant": det_grad_velocity_array
     })
 
     df.write_csv(f"coarsened_{size}.csv")

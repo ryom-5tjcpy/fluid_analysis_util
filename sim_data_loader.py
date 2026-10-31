@@ -188,7 +188,7 @@ class SimulationDataLoader:
         """
         target_files = target_files or self.files
 
-        print(f" Querying {len(target_files)}/{len(self.files)} files")
+        # print(f" Querying {len(target_files)}/{len(self.files)} files")
 
         df = pl.scan_ipc(target_files)
 

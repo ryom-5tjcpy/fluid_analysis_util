@@ -32,12 +32,21 @@ def compute_coarsened_cell(loader: SimulationDataLoader, i: int, j: int, k: int,
     local_y = (col("gny") - 1) % size + 1
     local_z = (col("nn") - 1) % size + 1
 
+    # a center point of surface
     x0_flag = (local_x == 1) & (local_y == center_grid) & (local_z == center_grid)
     y0_flag = (local_x == center_grid) & (local_y == 1) & (local_z == center_grid)
     z0_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == 1)
     x1_flag = (local_x == size) & (local_y == center_grid) & (local_z == center_grid)
     y1_flag = (local_x == center_grid) & (local_y == size) & (local_z == center_grid)
     z1_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == size)
+
+    # points of surface
+    # x0_flag = local_x == 1
+    # y0_flag = local_y == 1
+    # z0_flag = local_z == 1
+    # x1_flag = local_x == size
+    # y1_flag = local_y == size
+    # z1_flag = local_z == size
 
     boxcell = loader.fetch_boxcell(x, y, z, size, ["gnx", "gny", "nn", "u", "v", "w", "eps"])
     boxcell_filtered = boxcell.filter(x0_flag | y0_flag | z0_flag | x1_flag | y1_flag | z1_flag).with_columns([

@@ -125,6 +125,12 @@ def main():
         help="Executor type to use for parallel iteration",
     )
     parser.add_argument("--workers", type=int, default=None, help="Number of workers for parallel iteration")
+    parser.add_argument(
+        "--chunksize",
+        type=int,
+        default=32,
+        help="Number of cells sent per executor.map chunk; use 1 for no batching",
+    )
     args = parser.parse_args()
 
     with open("dataset_options.json", "r") as f:
@@ -171,7 +177,7 @@ def main():
                     itertools.repeat(size),
                     itertools.repeat(rr),
                     itertools.repeat(center_grid),
-                    chunksize=max(1, len(cell_indices) // (max_workers * 4)),
+                    chunksize=max(1, args.chunksize),
                 )
             ):
                 strain_magnitude_array[idx] = result["strain_magnitude"]
@@ -187,6 +193,7 @@ def main():
                 executor.map(
                     lambda cell: compute_coarsened_cell(loader, cell[0], cell[1], cell[2], size, rr, center_grid),
                     cell_indices,
+                    chunksize=max(1, args.chunksize),
                 )
             ):
                 strain_magnitude_array[idx] = result["strain_magnitude"]

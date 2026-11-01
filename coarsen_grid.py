@@ -6,7 +6,7 @@ import numpy as np
 import os
 
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from numpy.linalg import det
 from polars import col, DataFrame, Expr
 
@@ -85,7 +85,7 @@ def compute_coarsened_cell(loader: SimulationDataLoader, i: int, j: int, k: int,
     q_value = 0.5 * (vorticity_magnitude - strain_magnitude)
     div_velocity = np.trace(velocity_grad_tensor)
     det_grad_velocity = det(velocity_grad_tensor)
-    eps_value = boxcell_filtered.select(col("eps")).mean().row(0)[0]
+    eps_value = boxcell.select(col("eps")).mean().row(0)[0]
 
     return {
         "i": i,
@@ -104,6 +104,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True, help="Dataset name")
     parser.add_argument("--size", type=int, required=True, help="Grid size")
+    parser.add_argument("--use_processes", action="store_true", help="Use processes instead of threads for parallel iteration")
     parser.add_argument("--workers", type=int, default=None, help="Number of threads for parallel iteration")
     args = parser.parse_args()
 
@@ -138,7 +139,8 @@ def main():
     max_workers = args.workers or min((os.cpu_count() or 1) * 2, 16)
     cell_indices = list(zip(i_list.tolist(), j_list.tolist(), k_list.tolist()))
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    executor_class = ProcessPoolExecutor if args.use_processes else ThreadPoolExecutor
+    with executor_class(max_workers=max_workers) as executor:
         for idx, result in enumerate(
             executor.map(
                 lambda cell: compute_coarsened_cell(loader, cell[0], cell[1], cell[2], size, rr, center_grid),

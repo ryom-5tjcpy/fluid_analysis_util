@@ -224,10 +224,14 @@ class SimulationDataLoader:
         Returns:
             pl.DataFrame: The fetched boxcell of simulation data.
         """
+        target_files = self.find_files(
+            (x, x + size),
+            (y, y + size),
+        )
 
         conditions = [
             col("gnx").is_between(x, x + size, closed="left"),
             col("gny").is_between(y, y + size, closed="left"),
             col("nn").is_between(z, z + size, closed="left")
         ]
-        return self.query(target_files=None, columns=columns, conditions=conditions, sort_order=sort_order, descending=descending, limit=limit, streaming=streaming)
+        return self.query(target_files=target_files, columns=columns, conditions=conditions, sort_order=sort_order, descending=descending, limit=limit, streaming=streaming)

@@ -1,14 +1,16 @@
 from sim_data_loader import SimulationDataLoader
 
 import argparse
+import itertools
 import json
-import numpy as np
 import os
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
-
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+import numpy as np
 from numpy.linalg import det
-from polars import col, DataFrame, Expr
+from polars import DataFrame, Expr, col
+
+WORKER_LOADER = None
 
 
 def fetch_face_mean(df: DataFrame, face_flag: Expr) -> np.ndarray:
@@ -20,6 +22,18 @@ def fetch_face_mean(df: DataFrame, face_flag: Expr) -> np.ndarray:
     * face_flag: Expr - The flag indicating the face of interest
     """
     return np.array(df.filter(face_flag).select(["u", "v", "w"]).mean().row(0))
+
+
+def _init_worker(data_pattern: str, index_file: str) -> None:
+    global WORKER_LOADER
+    WORKER_LOADER = SimulationDataLoader(data_pattern, index_file)
+
+
+def _compute_boxcell_task(cell: tuple[int, int, int], size: int, rr: float, center_grid: int) -> dict:
+    if WORKER_LOADER is None:
+        raise RuntimeError("WORKER_LOADER is not initialized")
+    i, j, k = cell
+    return compute_coarsened_cell(WORKER_LOADER, i, j, k, size, rr, center_grid)
 
 
 def compute_coarsened_cell(loader: SimulationDataLoader, i: int, j: int, k: int, size: int, rr: float, center_grid: int) -> dict:
@@ -104,8 +118,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True, help="Dataset name")
     parser.add_argument("--size", type=int, required=True, help="Grid size")
-    parser.add_argument("--use_processes", action="store_true", help="Use processes instead of threads for parallel iteration")
-    parser.add_argument("--workers", type=int, default=None, help="Number of threads for parallel iteration")
+    parser.add_argument(
+        "--executor",
+        choices=("thread", "process"),
+        default="thread",
+        help="Executor type to use for parallel iteration",
+    )
+    parser.add_argument("--workers", type=int, default=None, help="Number of workers for parallel iteration")
     args = parser.parse_args()
 
     with open("dataset_options.json", "r") as f:
@@ -115,8 +134,6 @@ def main():
     base_path = f"/data/arrow_files/{dataset['data_type']}_{dataset['data_size']}_{dataset['step']}"
     data_pattern = f"{base_path}/data/{dataset['data_type']}_{dataset['data_size']}_*.arrow"
     index_file = f"{dataset['data_type']}_{dataset['data_size']}_index.json"
-
-    loader = SimulationDataLoader(data_pattern, index_file)
 
     size = int(args.size)
     data_size = dataset['data_size']
@@ -136,23 +153,48 @@ def main():
     det_grad_velocity_array = np.zeros(n_iter)
     eps_array = np.zeros(n_iter)
 
-    max_workers = args.workers or min((os.cpu_count() or 1) * 2, 16)
-    cell_indices = list(zip(i_list.tolist(), j_list.tolist(), k_list.tolist()))
+    if args.workers is None:
+        cpu_count = os.cpu_count() or 1
+        max_workers = cpu_count if args.executor == "process" else min(cpu_count * 2, 16)
+    else:
+        max_workers = args.workers
 
-    executor_class = ProcessPoolExecutor if args.use_processes else ThreadPoolExecutor
-    with executor_class(max_workers=max_workers) as executor:
-        for idx, result in enumerate(
-            executor.map(
-                lambda cell: compute_coarsened_cell(loader, cell[0], cell[1], cell[2], size, rr, center_grid),
-                cell_indices,
-            )
-        ):
-            strain_magnitude_array[idx] = result["strain_magnitude"]
-            vorticity_magnitude_array[idx] = result["vorticity_magnitude"]
-            q_array[idx] = result["q"]
-            div_velocity_array[idx] = result["div_velocity"]
-            det_grad_velocity_array[idx] = result["det_grad_velocity"]
-            eps_array[idx] = result["eps"]
+    cell_indices = list(zip(i_list.tolist(), j_list.tolist(), k_list.tolist()))
+    executor_class = ProcessPoolExecutor if args.executor == "process" else ThreadPoolExecutor
+
+    if args.executor == "process":
+        with executor_class(max_workers=max_workers, initializer=_init_worker, initargs=(data_pattern, index_file)) as executor:
+            for idx, result in enumerate(
+                executor.map(
+                    _compute_boxcell_task,
+                    cell_indices,
+                    itertools.repeat(size),
+                    itertools.repeat(rr),
+                    itertools.repeat(center_grid),
+                    chunksize=max(1, len(cell_indices) // (max_workers * 4)),
+                )
+            ):
+                strain_magnitude_array[idx] = result["strain_magnitude"]
+                vorticity_magnitude_array[idx] = result["vorticity_magnitude"]
+                q_array[idx] = result["q"]
+                div_velocity_array[idx] = result["div_velocity"]
+                det_grad_velocity_array[idx] = result["det_grad_velocity"]
+                eps_array[idx] = result["eps"]
+    else:
+        loader = SimulationDataLoader(data_pattern, index_file)
+        with executor_class(max_workers=max_workers) as executor:
+            for idx, result in enumerate(
+                executor.map(
+                    lambda cell: compute_coarsened_cell(loader, cell[0], cell[1], cell[2], size, rr, center_grid),
+                    cell_indices,
+                )
+            ):
+                strain_magnitude_array[idx] = result["strain_magnitude"]
+                vorticity_magnitude_array[idx] = result["vorticity_magnitude"]
+                q_array[idx] = result["q"]
+                div_velocity_array[idx] = result["div_velocity"]
+                det_grad_velocity_array[idx] = result["det_grad_velocity"]
+                eps_array[idx] = result["eps"]
 
     df = DataFrame({
         "i": i_list,

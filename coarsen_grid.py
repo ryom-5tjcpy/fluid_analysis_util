@@ -60,7 +60,7 @@ def main():
     # y1_flag = local_y == size
     # z1_flag = local_z == size
 
-    lf = lf.group_by([i, j, k]).agg([
+    lf = lf.group_by(["i", "j", "k"]).agg([
         # surface of x0
         col("u").filter(x0_flag).mean().alias("u_x0"),
         col("v").filter(x0_flag).mean().alias("v_x0"),
@@ -135,12 +135,12 @@ def main():
         det_grad_u.alias("det_gradient_velocity"),
         div_grad_u.alias("divergence_gradient_velocity"),
         q.alias("q_value")
-    ]).sort(["i", "j", "k"]).select([
+    ]).select([
         "i", "j", "k",
         "strain_magnitude", "vorticity_magnitude",
         "det_gradient_velocity", "divergence_gradient_velocity",
         "q_value"
-    ]).collect(engine=args.engine)
+    ]).sort(['i', 'j', 'k']).collect(engine=args.engine)
 
     df.write_csv(f"coarsened_{args.dataset}_{args.size}.csv")
     df.write_ipc(f"coarsened_{args.dataset}_{args.size}.arrow")

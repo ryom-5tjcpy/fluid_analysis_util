@@ -1,135 +1,18 @@
-from sim_data_loader import SimulationDataLoader
-
 import argparse
-import itertools
 import json
-import os
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 import numpy as np
-from numpy.linalg import det
-from polars import DataFrame, Expr, col
-
-WORKER_LOADER = None
-
-
-def fetch_face_mean(df: DataFrame, face_flag: Expr) -> np.ndarray:
-    """
-    Fetch the mean velocity components for a given face flag.
-
-    ### parameter
-    * df: DataFrame - The input DataFrame
-    * face_flag: Expr - The flag indicating the face of interest
-    """
-    return np.array(df.filter(face_flag).select(["u", "v", "w"]).mean().row(0))
-
-
-def _init_worker(data_pattern: str, index_file: str) -> None:
-    global WORKER_LOADER
-    WORKER_LOADER = SimulationDataLoader(data_pattern, index_file)
-
-
-def _compute_boxcell_task(cell: tuple[int, int, int], size: int, rr: float, center_grid: int) -> dict:
-    if WORKER_LOADER is None:
-        raise RuntimeError("WORKER_LOADER is not initialized")
-    i, j, k = cell
-    return compute_coarsened_cell(WORKER_LOADER, i, j, k, size, rr, center_grid)
-
-
-def compute_coarsened_cell(loader: SimulationDataLoader, i: int, j: int, k: int, size: int, rr: float, center_grid: int) -> dict:
-    """Compute a single coarsened cell and return the scalar metrics."""
-    x = size * (i - 1) + 1
-    y = size * (j - 1) + 1
-    z = size * (k - 1) + 1
-
-    local_x = (col("gnx") - 1) % size + 1
-    local_y = (col("gny") - 1) % size + 1
-    local_z = (col("nn") - 1) % size + 1
-
-    # a center point of surface
-    x0_flag = (local_x == 1) & (local_y == center_grid) & (local_z == center_grid)
-    y0_flag = (local_x == center_grid) & (local_y == 1) & (local_z == center_grid)
-    z0_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == 1)
-    x1_flag = (local_x == size) & (local_y == center_grid) & (local_z == center_grid)
-    y1_flag = (local_x == center_grid) & (local_y == size) & (local_z == center_grid)
-    z1_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == size)
-
-    # points of surface
-    # x0_flag = local_x == 1
-    # y0_flag = local_y == 1
-    # z0_flag = local_z == 1
-    # x1_flag = local_x == size
-    # y1_flag = local_y == size
-    # z1_flag = local_z == size
-
-    boxcell = loader.fetch_boxcell(x, y, z, size, ["gnx", "gny", "nn", "u", "v", "w", "eps"])
-    boxcell_filtered = boxcell.filter(x0_flag | y0_flag | z0_flag | x1_flag | y1_flag | z1_flag).with_columns([
-        x0_flag.alias("x_0_flag"),
-        y0_flag.alias("y_0_flag"),
-        z0_flag.alias("z_0_flag"),
-        x1_flag.alias("x_1_flag"),
-        y1_flag.alias("y_1_flag"),
-        z1_flag.alias("z_1_flag"),
-    ])
-
-    u_x0, v_x0, w_x0 = fetch_face_mean(boxcell_filtered, x0_flag)
-    u_y0, v_y0, w_y0 = fetch_face_mean(boxcell_filtered, y0_flag)
-    u_z0, v_z0, w_z0 = fetch_face_mean(boxcell_filtered, z0_flag)
-    u_x1, v_x1, w_x1 = fetch_face_mean(boxcell_filtered, x1_flag)
-    u_y1, v_y1, w_y1 = fetch_face_mean(boxcell_filtered, y1_flag)
-    u_z1, v_z1, w_z1 = fetch_face_mean(boxcell_filtered, z1_flag)
-
-    velocity_grad_tensor = np.array([
-        [u_x1 - u_x0, u_y1 - u_y0, u_z1 - u_z0],
-        [v_x1 - v_x0, v_y1 - v_y0, v_z1 - v_z0],
-        [w_x1 - w_x0, w_y1 - w_y0, w_z1 - w_z0],
-    ]) / rr
-
-    vorticity_tensor = np.zeros((3, 3))
-    vorticity_tensor[0, 1] = 0.5 * (velocity_grad_tensor[0, 1] - velocity_grad_tensor[1, 0])
-    vorticity_tensor[1, 2] = 0.5 * (velocity_grad_tensor[1, 2] - velocity_grad_tensor[2, 1])
-    vorticity_tensor[2, 0] = 0.5 * (velocity_grad_tensor[2, 0] - velocity_grad_tensor[0, 2])
-    vorticity_tensor[1, 0] = -vorticity_tensor[0, 1]
-    vorticity_tensor[2, 1] = -vorticity_tensor[1, 2]
-    vorticity_tensor[0, 2] = -vorticity_tensor[2, 0]
-
-    strain_tensor = velocity_grad_tensor - vorticity_tensor
-    strain_magnitude = np.sum(strain_tensor ** 2)
-    vorticity_magnitude = np.sum(vorticity_tensor ** 2)
-    q_value = 0.5 * (vorticity_magnitude - strain_magnitude)
-    div_velocity = np.trace(velocity_grad_tensor)
-    det_grad_velocity = det(velocity_grad_tensor)
-    eps_value = boxcell.select(col("eps")).mean().row(0)[0]
-
-    return {
-        "i": i,
-        "j": j,
-        "k": k,
-        "strain_magnitude": strain_magnitude,
-        "vorticity_magnitude": vorticity_magnitude,
-        "q": q_value,
-        "div_velocity": div_velocity,
-        "det_grad_velocity": det_grad_velocity,
-        "eps": eps_value,
-    }
-
+from polars import col, scan_ipc
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True, help="Dataset name")
     parser.add_argument("--size", type=int, required=True, help="Grid size")
     parser.add_argument(
-        "--executor",
-        choices=("thread", "process"),
-        default="thread",
-        help="Executor type to use for parallel iteration",
-    )
-    parser.add_argument("--workers", type=int, default=None, help="Number of workers for parallel iteration")
-    parser.add_argument(
-        "--chunksize",
-        type=int,
-        default=32,
-        help="Number of cells sent per executor.map chunk; use 1 for no batching",
+        "--engine",
+        choices=("auto", "in-memory", "streaming", "gpu"),
+        default="auto",
+        help="Engine"
     )
     args = parser.parse_args()
 
@@ -139,94 +22,128 @@ def main():
     dataset = dataset_options[args.dataset]
     base_path = f"/data/arrow_files/{dataset['data_type']}_{dataset['data_size']}_{dataset['step']}"
     data_pattern = f"{base_path}/data/{dataset['data_type']}_{dataset['data_size']}_*.arrow"
-    index_file = f"{dataset['data_type']}_{dataset['data_size']}_index.json"
 
     size = int(args.size)
-    data_size = dataset['data_size']
-    coarsened_size = data_size // size
-    n_iter = coarsened_size ** 3
-    i_list = np.repeat(np.arange(1, coarsened_size + 1), coarsened_size * coarsened_size)
-    j_list = np.repeat(np.tile(np.arange(1, coarsened_size + 1), coarsened_size), coarsened_size)
-    k_list = np.tile(np.arange(1, coarsened_size + 1), coarsened_size * coarsened_size)
+
+    lf = scan_ipc(data_pattern)
+
+    i = (col("gnx") - 1) // size + 1
+    j = (col("gny") - 1) // size + 1
+    k = (col("nn") - 1) // size + 1
+    local_x = (col("gnx") - 1) % size + 1
+    local_y = (col("gny") - 1) % size + 1
+    local_z = (col("nn") - 1) % size + 1
+
+    lf = lf.with_columns([
+        i.alias("i"),
+        j.alias("j"),
+        k.alias("k"),
+    ])
+    
 
     rr = 2 * np.pi / (size - 1) / 4096
     center_grid = size // 2
 
-    strain_magnitude_array = np.zeros(n_iter)
-    vorticity_magnitude_array = np.zeros(n_iter)
-    q_array = np.zeros(n_iter)
-    div_velocity_array = np.zeros(n_iter)
-    det_grad_velocity_array = np.zeros(n_iter)
-    eps_array = np.zeros(n_iter)
+    # a center point of surface
+    x0_flag = (local_x == 1) & (local_y == center_grid) & (local_z == center_grid)
+    y0_flag = (local_x == center_grid) & (local_y == 1) & (local_z == center_grid)
+    z0_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == 1)
+    x1_flag = (local_x == size) & (local_y == center_grid) & (local_z == center_grid)
+    y1_flag = (local_x == center_grid) & (local_y == size) & (local_z == center_grid)
+    z1_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == size)
+    
+    # points of surface
+    # x0_flag = local_x == 1
+    # y0_flag = local_y == 1
+    # z0_flag = local_z == 1
+    # x1_flag = local_x == size
+    # y1_flag = local_y == size
+    # z1_flag = local_z == size
 
-    if args.workers is None:
-        cpu_count = os.cpu_count() or 1
-        max_workers = cpu_count if args.executor == "process" else min(cpu_count * 2, 16)
-    else:
-        max_workers = args.workers
+    lf = lf.group_by([i, j, k]).agg([
+        # surface of x0
+        col("u").filter(x0_flag).mean().alias("u_x0"),
+        col("v").filter(x0_flag).mean().alias("v_x0"),
+        col("w").filter(x0_flag).mean().alias("w_x0"),
+        # surface of y0
+        col("u").filter(y0_flag).mean().alias("u_y0"),
+        col("v").filter(y0_flag).mean().alias("v_y0"),
+        col("w").filter(y0_flag).mean().alias("w_y0"),
+        # surface of z0
+        col("u").filter(z0_flag).mean().alias("u_z0"),
+        col("v").filter(z0_flag).mean().alias("v_z0"),
+        col("w").filter(z0_flag).mean().alias("w_z0"),
+        #surface of x1
+        col("u").filter(x1_flag).mean().alias("u_x1"),
+        col("v").filter(x1_flag).mean().alias("v_x1"),
+        col("w").filter(x1_flag).mean().alias("w_x1"),
+        # surface of y1
+        col("u").filter(y1_flag).mean().alias("u_y1"),
+        col("v").filter(y1_flag).mean().alias("v_y1"),
+        col("w").filter(y1_flag).mean().alias("w_y1"),
+        # surface of z1
+        col("u").filter(z1_flag).mean().alias("u_z1"),
+        col("v").filter(z1_flag).mean().alias("v_z1"),
+        col("w").filter(z1_flag).mean().alias("w_z1"),
+        # eps mean
+        col("eps").mean().alias("eps")
+    ])
 
-    cell_indices = list(zip(i_list.tolist(), j_list.tolist(), k_list.tolist()))
-    executor_class = ProcessPoolExecutor if args.executor == "process" else ThreadPoolExecutor
+    du_dx = (col("u_x1") - col("u_x0")) / rr
+    du_dy = (col("u_y1") - col("u_y0")) / rr
+    du_dz = (col("u_z1") - col("u_z0")) / rr
 
-    if args.executor == "process":
-        with executor_class(max_workers=max_workers, initializer=_init_worker, initargs=(data_pattern, index_file)) as executor:
-            for idx, result in enumerate(
-                executor.map(
-                    _compute_boxcell_task,
-                    cell_indices,
-                    itertools.repeat(size),
-                    itertools.repeat(rr),
-                    itertools.repeat(center_grid),
-                    chunksize=max(1, args.chunksize),
-                )
-            ):
-                strain_magnitude_array[idx] = result["strain_magnitude"]
-                vorticity_magnitude_array[idx] = result["vorticity_magnitude"]
-                q_array[idx] = result["q"]
-                div_velocity_array[idx] = result["div_velocity"]
-                det_grad_velocity_array[idx] = result["det_grad_velocity"]
-                eps_array[idx] = result["eps"]
-    else:
-        loader = SimulationDataLoader(data_pattern, index_file)
-        with executor_class(max_workers=max_workers) as executor:
-            for idx, result in enumerate(
-                executor.map(
-                    lambda cell: compute_coarsened_cell(loader, cell[0], cell[1], cell[2], size, rr, center_grid),
-                    cell_indices,
-                    chunksize=max(1, args.chunksize),
-                )
-            ):
-                strain_magnitude_array[idx] = result["strain_magnitude"]
-                vorticity_magnitude_array[idx] = result["vorticity_magnitude"]
-                q_array[idx] = result["q"]
-                div_velocity_array[idx] = result["div_velocity"]
-                det_grad_velocity_array[idx] = result["det_grad_velocity"]
-                eps_array[idx] = result["eps"]
+    dv_dx = (col("v_x1") - col("v_x0")) / rr
+    dv_dy = (col("v_y1") - col("v_y0")) / rr
+    dv_dz = (col("v_z1") - col("v_z0")) / rr
 
-    df = DataFrame({
-        "i": i_list,
-        "j": j_list,
-        "k": k_list,
-        "strain_magnitude": strain_magnitude_array,
-        "vorticity_magnitude": vorticity_magnitude_array,
-        "q": q_array,
-        "div_velocity": div_velocity_array,
-        "det_grad_velocity": det_grad_velocity_array,
-        "eps": eps_array,
-    })
+    dw_dx = (col("w_x1") - col("w_x0")) / rr
+    dw_dy = (col("w_y1") - col("w_y0")) / rr
+    dw_dz = (col("w_z1") - col("w_z0")) / rr
 
-    df.write_csv(f"coarsened_{size}.csv")
+    # Vorticity Tensor
+    w_01 = 0.5 * (du_dy - dv_dx)
+    w_02 = 0.5 * (du_dz - dw_dx)
+    w_12 = 0.5 * (dv_dz - dw_dy)
 
-    df_normalized = df.select([
-        col("i"),
-        col("j"),
-        col("k"),
-        (col("strain_magnitude") / col("strain_magnitude").mean()).alias("s2"),
-        (col("vorticity_magnitude") / col("vorticity_magnitude").mean()).alias("o2"),
-        (col("eps") / col("eps").mean()).alias("eps"),
-    ]).with_columns((col("o2") - col("s2")).alias("q"))
+    # Strain Tensor
+    s_00 = du_dx
+    s_11 = dv_dy
+    s_22 = dw_dz
+    s_01 = 0.5 * (du_dy + dv_dx)
+    s_02 = 0.5 * (du_dz + dw_dx)
+    s_12 = 0.5 * (dv_dz + dw_dy)
 
-    df_normalized.write_csv(f"coarsened_normalized_{size}.csv")
+    # Sum of Squares
+    # Strain Tensor Norm
+    s_norm = s_00**2 + s_11**2 + s_22**2 + 2*(s_01**2 + s_02**2 + s_12**2)
+
+    # Sum of Squares
+    # Vorticity Tensor Norm
+    w_norm = 2 * (w_01**2 + w_02**2 + w_12**2)
+
+    # Determinant of Gradient Velocity Tensor
+    det_grad_u = du_dx * (dv_dy * dw_dz - dv_dz * dw_dy) - du_dy * (dv_dx * dw_dz - dv_dz * dw_dx) + du_dz * (dv_dx * dw_dy - dv_dy * dw_dx)
+
+    div_grad_u = du_dx + dv_dy + dw_dz
+
+    q = 0.5 * (w_norm - s_norm)
+
+    df = lf.with_columns([
+        s_norm.alias("strain_magnitude"),
+        w_norm.alias("vorticity_magnitude"),
+        det_grad_u.alias("det_gradient_velocity"),
+        div_grad_u.alias("divergence_gradient_velocity"),
+        q.alias("q_value")
+    ]).sort(["i", "j", "k"]).select([
+        "i", "j", "k",
+        "strain_magnitude", "vorticity_magnitude",
+        "det_gradient_velocity", "divergence_gradient_velocity",
+        "q_value"
+    ]).collect(engine=args.engine)
+
+    df.write_csv(f"coarsened_{args.dataset}_{args.size}.csv")
+    df.write_ipc(f"coarsened_{args.dataset}_{args.size}.arrow")
 
 
 if __name__ == "__main__":

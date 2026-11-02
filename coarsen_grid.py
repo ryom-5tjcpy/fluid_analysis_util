@@ -139,7 +139,7 @@ def main():
         "i", "j", "k",
         "strain_magnitude", "vorticity_magnitude",
         "det_gradient_velocity", "divergence_gradient_velocity",
-        "q_value"
+        "q_value", "eps"
     ]).sort(['i', 'j', 'k']).collect(engine=args.engine)
 
     df.write_csv(f"coarsened_{args.dataset}_{args.size}.csv")

@@ -12,7 +12,7 @@ def main():
         "--engine",
         choices=("auto", "in-memory", "streaming", "gpu"),
         default="auto",
-        help="Engine"
+        help="Engine used to process the query"
     )
     args = parser.parse_args()
 

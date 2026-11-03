@@ -24,6 +24,7 @@ def main():
     data_pattern = f"{base_path}/data/{dataset['data_type']}_{dataset['data_size']}_*.arrow"
 
     size = int(args.size)
+    coarsened_size = dataset['data_size'] // size
 
     lf = scan_ipc(data_pattern)
 
@@ -142,8 +143,8 @@ def main():
         "q_value", "eps"
     ]).sort(['i', 'j', 'k']).collect(engine=args.engine)
 
-    df.write_csv(f"coarsened_{args.dataset}_{args.size}.csv")
-    df.write_ipc(f"coarsened_{args.dataset}_{args.size}.arrow")
+    df.write_csv(f"coarsened_{args.dataset}_{coarsened_size}.csv")
+    df.write_ipc(f"coarsened_{args.dataset}_{coarsened_size}.arrow")
 
 
 if __name__ == "__main__":

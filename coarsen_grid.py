@@ -42,23 +42,23 @@ def main():
     
 
     rr = 2 * np.pi / (size - 1) / 4096
-    center_grid = size // 2
+    # center_grid = size // 2
 
     # a center point of surface
-    x0_flag = (local_x == 1) & (local_y == center_grid) & (local_z == center_grid)
-    y0_flag = (local_x == center_grid) & (local_y == 1) & (local_z == center_grid)
-    z0_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == 1)
-    x1_flag = (local_x == size) & (local_y == center_grid) & (local_z == center_grid)
-    y1_flag = (local_x == center_grid) & (local_y == size) & (local_z == center_grid)
-    z1_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == size)
+    # x0_flag = (local_x == 1) & (local_y == center_grid) & (local_z == center_grid)
+    # y0_flag = (local_x == center_grid) & (local_y == 1) & (local_z == center_grid)
+    # z0_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == 1)
+    # x1_flag = (local_x == size) & (local_y == center_grid) & (local_z == center_grid)
+    # y1_flag = (local_x == center_grid) & (local_y == size) & (local_z == center_grid)
+    # z1_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == size)
     
     # points of surface
-    # x0_flag = local_x == 1
-    # y0_flag = local_y == 1
-    # z0_flag = local_z == 1
-    # x1_flag = local_x == size
-    # y1_flag = local_y == size
-    # z1_flag = local_z == size
+    x0_flag = local_x == 1
+    y0_flag = local_y == 1
+    z0_flag = local_z == 1
+    x1_flag = local_x == size
+    y1_flag = local_y == size
+    z1_flag = local_z == size
 
     lf = lf.group_by(["i", "j", "k"]).agg([
         # surface of x0
@@ -133,12 +133,12 @@ def main():
         s_norm.alias("strain_magnitude"),
         w_norm.alias("vorticity_magnitude"),
         det_grad_u.alias("det_gradient_velocity"),
-        div_grad_u.alias("divergence_gradient_velocity"),
+        div_grad_u.alias("div_grad_velocity"),
         q.alias("q_value")
     ]).select([
         "i", "j", "k",
         "strain_magnitude", "vorticity_magnitude",
-        "det_gradient_velocity", "divergence_gradient_velocity",
+        "det_gradient_velocity", "div_grad_velocity",
         "q_value", "eps"
     ]).sort(['i', 'j', 'k']).collect(engine=args.engine)
 

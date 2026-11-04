@@ -20,9 +20,6 @@ From: python:3.12.3-slim
 %apprun fetch_data
     exec python /app/main.py "$@"
 
-%apprun coarsen_grid_prototype
-    exec python /app/coarsen_grid_prototype.py
-
 %apprun coarsen_grid
     exec python /app/coarsen_grid.py "$@"
 

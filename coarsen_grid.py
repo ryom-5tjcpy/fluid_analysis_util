@@ -8,6 +8,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True, help="Dataset name")
     parser.add_argument("--size", type=int, required=True, help="Grid size")
+    parser.add_argument("--use_face_average", action="store_true", help="Whether to use face average")
     parser.add_argument(
         "--engine",
         choices=("auto", "in-memory", "streaming", "gpu"),
@@ -43,23 +44,24 @@ def main():
     
 
     rr = 2 * np.pi / (size - 1) / 4096
-    # center_grid = size // 2
 
-    # a center point of surface
-    # x0_flag = (local_x == 1) & (local_y == center_grid) & (local_z == center_grid)
-    # y0_flag = (local_x == center_grid) & (local_y == 1) & (local_z == center_grid)
-    # z0_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == 1)
-    # x1_flag = (local_x == size) & (local_y == center_grid) & (local_z == center_grid)
-    # y1_flag = (local_x == center_grid) & (local_y == size) & (local_z == center_grid)
-    # z1_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == size)
-    
-    # points of surface
-    x0_flag = local_x == 1
-    y0_flag = local_y == 1
-    z0_flag = local_z == 1
-    x1_flag = local_x == size
-    y1_flag = local_y == size
-    z1_flag = local_z == size
+    if args.use_face_average:
+        # points of surface
+        x0_flag = local_x == 1
+        y0_flag = local_y == 1
+        z0_flag = local_z == 1
+        x1_flag = local_x == size
+        y1_flag = local_y == size
+        z1_flag = local_z == size
+    else:
+        # the center point of surface
+        center_grid = size // 2
+        x0_flag = (local_x == 1) & (local_y == center_grid) & (local_z == center_grid)
+        y0_flag = (local_x == center_grid) & (local_y == 1) & (local_z == center_grid)
+        z0_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == 1)
+        x1_flag = (local_x == size) & (local_y == center_grid) & (local_z == center_grid)
+        y1_flag = (local_x == center_grid) & (local_y == size) & (local_z == center_grid)
+        z1_flag = (local_x == center_grid) & (local_y == center_grid) & (local_z == size)
 
     lf = lf.group_by(["i", "j", "k"]).agg([
         # surface of x0

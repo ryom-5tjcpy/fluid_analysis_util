@@ -23,6 +23,9 @@ From: python:3.12.3-slim
 %apprun coarsen_grid
     exec python /app/coarsen_grid.py "$@"
 
+%apprun compute_velocity_grad_tensor
+    exec python /app/compute_velocity_grad_tensor.py "$@"
+
 %apprun normilize
     exec python /app/normilize.py "$@"
 
